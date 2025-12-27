@@ -7,10 +7,14 @@ External API for integrating with Chrome extensions, mobile apps, and other thir
 - [Authentication](#authentication)
 - [Base URL](#base-url)
 - [Endpoints](#endpoints)
-  - [Add Bookmark](#add-bookmark)
-  - [List Bookmarks](#list-bookmarks)
-  - [Get Single Bookmark](#get-single-bookmark)
-  - [Delete Bookmark](#delete-bookmark)
+  - [Categories](#categories)
+    - [List Categories](#list-categories)
+    - [Create Category](#create-category)
+  - [Bookmarks](#bookmarks)
+    - [Add Bookmark](#add-bookmark)
+    - [List Bookmarks](#list-bookmarks)
+    - [Get Single Bookmark](#get-single-bookmark)
+    - [Delete Bookmark](#delete-bookmark)
 - [Error Handling](#error-handling)
 - [Code Examples](#code-examples)
   - [cURL](#curl)
@@ -67,18 +71,168 @@ GET /api/external.php?api_key=bm_your_api_key_here
 
 ## Base URL
 
+**Bookmarks:**
 ```
 https://your-domain.com/api/external.php
+```
+
+**Categories:**
+```
+https://your-domain.com/api/categories.php
 ```
 
 For local development:
 ```
 http://localhost:8080/api/external.php
+http://localhost:8080/api/categories.php
 ```
 
 ---
 
 ## Endpoints
+
+### Categories
+
+Categories (also called collections or folders) help organize your bookmarks into a hierarchy.
+
+#### List Categories
+
+Retrieve all categories with bookmark counts.
+
+```http
+GET /api/categories.php
+Authorization: Bearer YOUR_API_KEY
+```
+
+##### Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `format` | string | flat | `flat` = list with depth indicator, `tree` = nested hierarchy |
+| `id` | integer | - | Get a single category by ID |
+
+##### Example Request
+
+```bash
+curl -X GET "https://your-domain.com/api/categories.php" \
+  -H "Authorization: Bearer bm_your_api_key"
+```
+
+##### Success Response (Flat Format)
+
+```json
+{
+  "success": true,
+  "data": [
+    { "id": 1, "name": "Uncategorized", "slug": "uncategorized", "depth": 0, "bookmark_count": 5 },
+    { "id": 2, "name": "Development", "slug": "development", "depth": 0, "bookmark_count": 12 },
+    { "id": 3, "name": "Frontend", "slug": "frontend", "parent_id": 2, "depth": 1, "bookmark_count": 8 },
+    { "id": 4, "name": "Backend", "slug": "backend", "parent_id": 2, "depth": 1, "bookmark_count": 4 },
+    { "id": 5, "name": "Personal", "slug": "personal", "depth": 0, "bookmark_count": 3 }
+  ]
+}
+```
+
+##### Tree Format Response
+
+```bash
+curl -X GET "https://your-domain.com/api/categories.php?format=tree" \
+  -H "Authorization: Bearer bm_your_api_key"
+```
+
+```json
+{
+  "success": true,
+  "data": [
+    { 
+      "id": 2, 
+      "name": "Development",
+      "slug": "development",
+      "bookmark_count": 12,
+      "children": [
+        { "id": 3, "name": "Frontend", "bookmark_count": 8, "children": [] },
+        { "id": 4, "name": "Backend", "bookmark_count": 4, "children": [] }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Personal",
+      "slug": "personal",
+      "bookmark_count": 3,
+      "children": []
+    }
+  ]
+}
+```
+
+---
+
+#### Create Category
+
+Create a new category.
+
+```http
+POST /api/categories.php
+Content-Type: application/json
+Authorization: Bearer YOUR_API_KEY
+```
+
+##### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | **Yes** | Category name (max 100 characters) |
+| `parent_id` | integer | No | Parent category ID for nesting |
+| `description` | string | No | Category description |
+| `color` | string | No | Color code (e.g., `#3B82F6`) |
+
+##### Example Request
+
+```bash
+curl -X POST "https://your-domain.com/api/categories.php" \
+  -H "Authorization: Bearer bm_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Work",
+    "description": "Work related bookmarks",
+    "color": "#3B82F6"
+  }'
+```
+
+##### Success Response (201 Created)
+
+```json
+{
+  "success": true,
+  "message": "Category created successfully",
+  "data": {
+    "id": 6,
+    "name": "Work",
+    "slug": "work",
+    "description": "Work related bookmarks",
+    "color": "#3B82F6",
+    "parent_id": null,
+    "level": 0
+  }
+}
+```
+
+##### Create Nested Category
+
+```bash
+curl -X POST "https://your-domain.com/api/categories.php" \
+  -H "Authorization: Bearer bm_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Projects",
+    "parent_id": 6,
+    "description": "Active projects"
+  }'
+```
+
+---
+
+### Bookmarks
 
 ### Add Bookmark
 

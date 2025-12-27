@@ -347,6 +347,7 @@ $baseUrl = APP_URL;
             <div class="nav-title">Quick Navigation</div>
             <ul class="nav-list">
                 <li><a href="#authentication">🔐 Authentication</a></li>
+                <li><a href="#categories">📁 Categories</a></li>
                 <li><a href="#add-bookmark">➕ Add Bookmark</a></li>
                 <li><a href="#list-bookmarks">📋 List Bookmarks</a></li>
                 <li><a href="#get-bookmark">🔍 Get Single Bookmark</a></li>
@@ -387,6 +388,155 @@ $baseUrl = APP_URL;
         <section id="base-url">
             <h2>🌐 Base URL</h2>
             <pre><code><?= htmlspecialchars($baseUrl) ?>/api/external.php</code></pre>
+            <p style="margin-top: 0.5rem;"><strong>Categories:</strong></p>
+            <pre><code><?= htmlspecialchars($baseUrl) ?>/api/categories.php</code></pre>
+        </section>
+
+        <section id="categories">
+            <h2>📁 Categories</h2>
+            <p>Categories (or collections/folders) help organize your bookmarks. Use these endpoints to fetch categories before saving bookmarks.</p>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/categories.php</span>
+                </div>
+                <div class="endpoint-body">
+                    <p class="endpoint-desc">Retrieve all categories with bookmark counts.</p>
+                    
+                    <h4>Query Parameters</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Default</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>format</code></td>
+                                <td><span class="type">string</span></td>
+                                <td>flat</td>
+                                <td><code>flat</code> = list with depth, <code>tree</code> = nested hierarchy</td>
+                            </tr>
+                            <tr>
+                                <td><code>id</code></td>
+                                <td><span class="type">integer</span></td>
+                                <td>-</td>
+                                <td>Get a single category by ID</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4>Example Request</h4>
+                    <pre><code>curl -X GET "<?= htmlspecialchars($baseUrl) ?>/api/categories.php" \
+  -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
+
+                    <div class="response-example">
+                        <h5>Success Response (Flat Format)</h5>
+                        <pre><code>{
+  "success": true,
+  "data": [
+    { "id": 1, "name": "Uncategorized", "depth": 0, "bookmark_count": 5 },
+    { "id": 2, "name": "Development", "depth": 0, "bookmark_count": 12 },
+    { "id": 3, "name": "Frontend", "parent_id": 2, "depth": 1, "bookmark_count": 8 },
+    { "id": 4, "name": "Backend", "parent_id": 2, "depth": 1, "bookmark_count": 4 },
+    { "id": 5, "name": "Personal", "depth": 0, "bookmark_count": 3 }
+  ]
+}</code></pre>
+                    </div>
+
+                    <div class="response-example">
+                        <h5>Tree Format (?format=tree)</h5>
+                        <pre><code>{
+  "success": true,
+  "data": [
+    { 
+      "id": 2, 
+      "name": "Development", 
+      "bookmark_count": 12,
+      "children": [
+        { "id": 3, "name": "Frontend", "bookmark_count": 8, "children": [] },
+        { "id": 4, "name": "Backend", "bookmark_count": 4, "children": [] }
+      ]
+    }
+  ]
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method method-post">POST</span>
+                    <span class="endpoint-path">/api/categories.php</span>
+                </div>
+                <div class="endpoint-body">
+                    <p class="endpoint-desc">Create a new category.</p>
+                    
+                    <h4>Request Body (JSON)</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>name</code></td>
+                                <td><span class="type">string</span></td>
+                                <td><span class="required">Required</span></td>
+                                <td>Category name (max 100 chars)</td>
+                            </tr>
+                            <tr>
+                                <td><code>parent_id</code></td>
+                                <td><span class="type">integer</span></td>
+                                <td><span class="optional">Optional</span></td>
+                                <td>Parent category ID for nesting</td>
+                            </tr>
+                            <tr>
+                                <td><code>description</code></td>
+                                <td><span class="type">string</span></td>
+                                <td><span class="optional">Optional</span></td>
+                                <td>Category description</td>
+                            </tr>
+                            <tr>
+                                <td><code>color</code></td>
+                                <td><span class="type">string</span></td>
+                                <td><span class="optional">Optional</span></td>
+                                <td>Color code (e.g., #3B82F6)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4>Example Request</h4>
+                    <pre><code>curl -X POST "<?= htmlspecialchars($baseUrl) ?>/api/categories.php" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Work", "description": "Work related bookmarks"}'</code></pre>
+
+                    <div class="response-example">
+                        <h5>Success Response (201 Created)</h5>
+                        <pre><code>{
+  "success": true,
+  "message": "Category created successfully",
+  "data": {
+    "id": 6,
+    "name": "Work",
+    "slug": "work",
+    "description": "Work related bookmarks",
+    "parent_id": null,
+    "level": 0
+  }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <section id="add-bookmark">
