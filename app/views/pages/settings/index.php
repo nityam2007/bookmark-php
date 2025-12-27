@@ -203,7 +203,7 @@ unset($_SESSION['new_api_key'], $_SESSION['new_api_key_name']);
             <div class="api-keys-section">
                 <p class="api-description">
                     API keys allow external apps (Chrome extensions, mobile apps) to add bookmarks to your account.
-                    <a href="/api/external.php" target="_blank">View API documentation</a>
+                    <a href="/api/" target="_blank">View API documentation</a>
                 </p>
 
                 <?php if ($newApiKey): ?>
