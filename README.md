@@ -61,15 +61,20 @@ The application will be available at `http://localhost:8080`.
 
 For cPanel, Plesk, or any shared hosting with PHP 8.1+ and MySQL:
 
-1. **Upload Files** - Upload all files to your web hosting via FTP/File Manager
-2. **Point Domain** - Set your domain's document root to the `public` folder
-3. **Run Installer** - Visit `https://yourdomain.com/install.php`
-4. **Follow Wizard** - The installer will:
-   - Check system requirements
-   - Configure database connection
-   - Create database tables
-   - Set up admin account
-5. **Delete Installer** - Remove `install.php` after installation for security
+**Method A: Upload to public_html directly (easiest)**
+
+1. **Upload Files** - Upload ALL files to `public_html` via FTP/File Manager
+2. **Run Installer** - Visit `https://yourdomain.com/install.php`
+3. **Follow Wizard** - Configure database, create admin account
+4. **Delete Installer** - Remove `install.php` after installation
+
+The root `.htaccess` and `index.php` will route requests properly.
+
+**Method B: Subdirectory with custom document root (if available)**
+
+1. Upload files to `/home/user/bookmark-manager/`
+2. In cPanel, set domain document root to `/home/user/bookmark-manager/public`
+3. Visit `https://yourdomain.com/install.php`
 
 ### Option 3: Manual Installation
 

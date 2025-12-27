@@ -1,0 +1,55 @@
+# Bookmark Manager - Root .htaccess
+# For shared hosting where app is in public_html root
+
+# Enable rewrite engine
+RewriteEngine On
+
+# Set base path (adjust if in subdirectory)
+# RewriteBase /
+
+# Redirect to installer if not configured
+RewriteCond %{REQUEST_FILENAME} !install\.php
+RewriteCond %{DOCUMENT_ROOT}/app/config/config.json !-f
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ install.php [L,R=302]
+
+# Deny access to sensitive directories
+RewriteRule ^app/ - [F,L]
+RewriteRule ^cache/ - [F,L]
+RewriteRule ^logs/ - [F,L]
+RewriteRule ^cron/ - [F,L]
+RewriteRule ^database/ - [F,L]
+RewriteRule ^browser-extension/ - [F,L]
+
+# Allow direct access to public assets
+RewriteCond %{REQUEST_URI} ^/public/(css|js|img|errors)/ [NC]
+RewriteRule ^public/(.*)$ public/$1 [L]
+
+# Route all other requests through public/index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteRule ^(.*)$ public/index.php [L,QSA]
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes
+
+# Deny access to hidden files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Deny access to sensitive files
+<FilesMatch "(^#.*#|\.(bak|config|json|lock|md|sql|txt|yml|yaml)|~)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
