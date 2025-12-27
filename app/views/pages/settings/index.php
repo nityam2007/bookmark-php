@@ -4,12 +4,19 @@
  * User profile and account settings
  * 
  * @var array $user - Current user data
+ * @var array $apiKeys - User's API keys
  */
 
 use App\Core\View;
 use App\Helpers\Csrf;
 
 $user = $user ?? [];
+$apiKeys = $apiKeys ?? [];
+
+// Check for newly generated API key
+$newApiKey = $_SESSION['new_api_key'] ?? null;
+$newApiKeyName = $_SESSION['new_api_key_name'] ?? null;
+unset($_SESSION['new_api_key'], $_SESSION['new_api_key_name']);
 ?>
 
 <div class="settings-page">
@@ -180,6 +187,141 @@ $user = $user ?? [];
                         </span>
                     </span>
                 </div>
+            </div>
+        </section>
+
+        <!-- API Keys -->
+        <section class="settings-card">
+            <div class="card-header">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                    </svg>
+                    API Keys
+                </h2>
+            </div>
+            <div class="api-keys-section">
+                <p class="api-description">
+                    API keys allow external apps (Chrome extensions, mobile apps) to add bookmarks to your account.
+                    <a href="/api/external.php" target="_blank">View API documentation</a>
+                </p>
+
+                <?php if ($newApiKey): ?>
+                    <div class="api-key-new">
+                        <div class="alert alert-success">
+                            <strong>New API Key Generated!</strong>
+                            <p>Copy this key now. It won't be shown again.</p>
+                        </div>
+                        <div class="api-key-display">
+                            <code id="newApiKey"><?= View::e($newApiKey) ?></code>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="copyApiKey()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                Copy
+                            </button>
+                        </div>
+                        <p class="api-key-name">Name: <strong><?= View::e($newApiKeyName) ?></strong></p>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Generate New Key -->
+                <form action="/settings/api-key/generate" method="POST" class="api-key-form">
+                    <?= Csrf::field() ?>
+                    <div class="form-row">
+                        <input 
+                            type="text" 
+                            name="key_name" 
+                            class="form-input"
+                            placeholder="Key name (e.g., Chrome Extension)"
+                            maxlength="100"
+                        >
+                        <button type="submit" class="btn btn-primary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Generate Key
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Existing Keys -->
+                <?php if (!empty($apiKeys)): ?>
+                    <div class="api-keys-list">
+                        <h4>Your API Keys</h4>
+                        <table class="api-keys-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Key</th>
+                                    <th>Created</th>
+                                    <th>Last Used</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($apiKeys as $key): ?>
+                                    <tr class="<?= $key['is_active'] ? '' : 'revoked' ?>">
+                                        <td><?= View::e($key['name']) ?></td>
+                                        <td><code><?= View::e($key['key_prefix']) ?>...****</code></td>
+                                        <td><?= date('M j, Y', strtotime($key['created_at'])) ?></td>
+                                        <td><?= $key['last_used_at'] ? date('M j, Y', strtotime($key['last_used_at'])) : 'Never' ?></td>
+                                        <td>
+                                            <span class="badge badge-<?= $key['is_active'] ? 'success' : 'danger' ?>">
+                                                <?= $key['is_active'] ? 'Active' : 'Revoked' ?>
+                                            </span>
+                                        </td>
+                                        <td class="actions">
+                                            <?php if ($key['is_active']): ?>
+                                                <form action="/settings/api-key/revoke" method="POST" style="display:inline;">
+                                                    <?= Csrf::field() ?>
+                                                    <input type="hidden" name="key_id" value="<?= $key['id'] ?>">
+                                                    <button type="submit" class="btn btn-sm btn-secondary" onclick="return confirm('Revoke this API key?')">Revoke</button>
+                                                </form>
+                                            <?php endif; ?>
+                                            <form action="/settings/api-key/delete" method="POST" style="display:inline;">
+                                                <?= Csrf::field() ?>
+                                                <input type="hidden" name="key_id" value="<?= $key['id'] ?>">
+                                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this API key permanently?')">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <p class="no-keys">No API keys yet. Generate one to use with external apps.</p>
+                <?php endif; ?>
+
+                <!-- API Usage Example -->
+                <details class="api-docs">
+                    <summary>API Usage Examples</summary>
+                    <div class="api-example">
+                        <h5>Add a bookmark (cURL)</h5>
+                        <pre><code>curl -X POST <?= View::e(APP_URL) ?>/api/external.php \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "title": "Example"}'</code></pre>
+
+                        <h5>Add a bookmark (JavaScript/Fetch)</h5>
+                        <pre><code>fetch('<?= View::e(APP_URL) ?>/api/external.php', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    url: 'https://example.com',
+    title: 'Example Site',
+    tags: ['work', 'reference']
+  })
+});</code></pre>
+                    </div>
+                </details>
             </div>
         </section>
 
@@ -512,6 +654,187 @@ $user = $user ?? [];
         gap: 0.25rem;
     }
 }
+
+/* API Keys Styles */
+.api-keys-section {
+    padding: 1.5rem;
+}
+
+.api-description {
+    margin-bottom: 1.5rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.api-description a {
+    color: var(--primary);
+}
+
+.api-key-new {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--success);
+    border-radius: var(--radius);
+}
+
+.api-key-new .alert {
+    margin-bottom: 1rem;
+}
+
+.api-key-new .alert strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.api-key-display {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.api-key-display code {
+    flex: 1;
+    padding: 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: monospace;
+    font-size: 0.8rem;
+    word-break: break-all;
+}
+
+.api-key-name {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.api-key-form {
+    margin-bottom: 1.5rem;
+}
+
+.api-key-form .form-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.api-key-form .form-input {
+    flex: 1;
+}
+
+.api-keys-list {
+    margin-top: 1.5rem;
+}
+
+.api-keys-list h4 {
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.api-keys-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.api-keys-table th,
+.api-keys-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.api-keys-table th {
+    font-weight: 600;
+    background: var(--bg);
+}
+
+.api-keys-table tr.revoked {
+    opacity: 0.6;
+}
+
+.api-keys-table code {
+    font-family: monospace;
+    font-size: 0.8rem;
+    background: var(--bg);
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+}
+
+.api-keys-table .actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+}
+
+.no-keys {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.api-docs {
+    margin-top: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.api-docs summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-weight: 500;
+    background: var(--bg);
+}
+
+.api-docs summary:hover {
+    background: var(--border);
+}
+
+.api-example {
+    padding: 1rem;
+}
+
+.api-example h5 {
+    margin: 1rem 0 0.5rem;
+    font-size: 0.875rem;
+}
+
+.api-example h5:first-child {
+    margin-top: 0;
+}
+
+.api-example pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    font-size: 0.75rem;
+}
+
+.api-example code {
+    font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.alert-success {
+    color: var(--success);
+}
+
+@media (max-width: 768px) {
+    .api-key-form .form-row {
+        flex-direction: column;
+    }
+    
+    .api-keys-table {
+        display: block;
+        overflow-x: auto;
+    }
+}
 </style>
 
 <script>
@@ -521,6 +844,34 @@ function showDeleteModal() {
 
 function hideDeleteModal() {
     document.getElementById('deleteModal').style.display = 'none';
+}
+
+function copyApiKey() {
+    const keyElement = document.getElementById('newApiKey');
+    const key = keyElement.textContent;
+    
+    navigator.clipboard.writeText(key).then(() => {
+        const btn = keyElement.nextElementSibling;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✓ Copied!';
+        btn.style.background = 'var(--success)';
+        btn.style.color = 'white';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+            btn.style.color = '';
+        }, 2000);
+    }).catch(() => {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = key;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('API key copied to clipboard!');
+    });
 }
 
 // Close modal on escape key

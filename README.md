@@ -217,23 +217,91 @@ bookmark-manager/
 
 ## API Endpoints
 
-### Search
+### Internal API (Session Auth)
+
+These endpoints require session authentication (login via browser):
+
 ```
-GET /api/search?q=query&limit=10
+GET    /api/search?q=query&limit=10    # Search bookmarks
+GET    /api/meta?url=https://example.com    # Fetch URL metadata
+GET    /api/bookmarks                  # List bookmarks
+POST   /api/bookmarks                  # Create bookmark
+GET    /api/bookmarks/:id              # Get bookmark
+PUT    /api/bookmarks/:id              # Update bookmark
+DELETE /api/bookmarks/:id              # Delete bookmark
 ```
 
-### Bookmark Metadata
+### External API (API Key Auth)
+
+For Chrome extensions, mobile apps, or other external integrations.
+
+**Authentication:** Include your API key in the request header:
 ```
-GET /api/meta?url=https://example.com
+Authorization: Bearer bm_xxxxxxxxxxxxxxxxxxxx
+```
+Or use the `X-API-Key` header:
+```
+X-API-Key: bm_xxxxxxxxxxxxxxxxxxxx
 ```
 
-### Bookmarks CRUD
+**Generate API Keys:** Go to Settings → API Keys in your dashboard.
+
+#### Add Bookmark
+```bash
+POST /api/external.php
+
+curl -X POST https://yourdomain.com/api/external.php \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "title": "Example Site",
+    "description": "Optional description",
+    "category": "Work",
+    "tags": ["reference", "tools"],
+    "is_favorite": true
+  }'
 ```
-GET    /api/bookmarks
-POST   /api/bookmarks
-GET    /api/bookmarks/:id
-PUT    /api/bookmarks/:id
-DELETE /api/bookmarks/:id
+
+**Request Body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `url` | string | Yes | The URL to bookmark |
+| `title` | string | No | Title (auto-fetched if empty) |
+| `description` | string | No | Description (auto-fetched if empty) |
+| `category` | string | No | Category name (created if doesn't exist) |
+| `category_id` | int | No | Category ID (takes precedence over name) |
+| `tags` | array | No | Array of tag names |
+| `is_favorite` | bool | No | Mark as favorite |
+| `fetch_meta` | bool | No | Auto-fetch title/description (default: true) |
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Bookmark created successfully",
+  "data": {
+    "id": 123,
+    "url": "https://example.com",
+    "title": "Example Site",
+    ...
+  }
+}
+```
+
+#### List Bookmarks
+```bash
+GET /api/external.php?page=1&per_page=20
+```
+
+#### Get Single Bookmark
+```bash
+GET /api/external.php?id=123
+```
+
+#### Delete Bookmark
+```bash
+DELETE /api/external.php?id=123
 ```
 
 ## Keyboard Shortcuts

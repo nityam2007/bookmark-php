@@ -26,11 +26,11 @@ abstract class BaseController
     /**
      * Render a view
      */
-    protected function view(string $view, array $data = []): string
+    protected function view(string $view, array $data = [], bool $useLayout = true): string
     {
         $data['currentUser'] = $this->currentUser;
         $data['csrfToken'] = Csrf::token();
-        return View::render("pages/{$view}", $data);
+        return View::render("pages/{$view}", $data, $useLayout);
     }
 
     /**

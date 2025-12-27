@@ -26,7 +26,7 @@ class AuthController extends BaseController
 
         return $this->view('auth/login', [
             'title' => 'Login'
-        ]);
+        ], false);
     }
 
     /**

@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Models\User;
+use App\Models\ApiKey;
 use App\Helpers\Auth;
 use App\Helpers\Sanitizer;
 
@@ -24,11 +25,94 @@ class SettingsController extends BaseController
         $this->requireAuth();
 
         $user = User::find(Auth::id());
+        $apiKeys = ApiKey::getByUser(Auth::id());
 
         return $this->view('settings/index', [
-            'user'  => $user,
-            'title' => 'Settings'
+            'user'    => $user,
+            'apiKeys' => $apiKeys,
+            'title'   => 'Settings'
         ]);
+    }
+
+    /**
+     * Generate a new API key
+     */
+    public function generateApiKey(): void
+    {
+        $this->requireAuth();
+        $this->validateCsrf();
+
+        $userId = Auth::id();
+        $name = Sanitizer::string($this->input('key_name'), 100);
+
+        if (empty($name)) {
+            $name = 'API Key ' . date('Y-m-d');
+        }
+
+        // Limit number of API keys per user
+        $keyCount = ApiKey::countByUser($userId);
+        if ($keyCount >= 10) {
+            $this->flash('error', 'Maximum 10 API keys allowed. Please delete unused keys first.');
+            $this->redirect('/settings');
+        }
+
+        // Generate the key
+        $result = ApiKey::generate($userId, $name);
+
+        // Store the key in session to show once (it's not stored in DB)
+        $_SESSION['new_api_key'] = $result['key'];
+        $_SESSION['new_api_key_name'] = $result['name'];
+
+        $this->flash('success', 'API key generated! Copy it now - it won\'t be shown again.');
+        $this->redirect('/settings');
+    }
+
+    /**
+     * Revoke (deactivate) an API key
+     */
+    public function revokeApiKey(): void
+    {
+        $this->requireAuth();
+        $this->validateCsrf();
+
+        $keyId = Sanitizer::int($this->input('key_id'));
+
+        if (!$keyId) {
+            $this->flash('error', 'Invalid API key');
+            $this->redirect('/settings');
+        }
+
+        if (ApiKey::revoke($keyId, Auth::id())) {
+            $this->flash('success', 'API key revoked successfully');
+        } else {
+            $this->flash('error', 'Failed to revoke API key');
+        }
+
+        $this->redirect('/settings');
+    }
+
+    /**
+     * Delete an API key permanently
+     */
+    public function deleteApiKey(): void
+    {
+        $this->requireAuth();
+        $this->validateCsrf();
+
+        $keyId = Sanitizer::int($this->input('key_id'));
+
+        if (!$keyId) {
+            $this->flash('error', 'Invalid API key');
+            $this->redirect('/settings');
+        }
+
+        if (ApiKey::deleteKey($keyId, Auth::id())) {
+            $this->flash('success', 'API key deleted permanently');
+        } else {
+            $this->flash('error', 'Failed to delete API key');
+        }
+
+        $this->redirect('/settings');
     }
 
     /**

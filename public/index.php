@@ -91,6 +91,9 @@ $router->get('/settings', [SettingsController::class, 'index']);
 $router->post('/settings/profile', [SettingsController::class, 'updateProfile']);
 $router->post('/settings/password', [SettingsController::class, 'updatePassword']);
 $router->post('/settings/delete-account', [SettingsController::class, 'deleteAccount']);
+$router->post('/settings/api-key/generate', [SettingsController::class, 'generateApiKey']);
+$router->post('/settings/api-key/revoke', [SettingsController::class, 'revokeApiKey']);
+$router->post('/settings/api-key/delete', [SettingsController::class, 'deleteApiKey']);
 
 // ============================================
 // API ROUTES (Handled directly by files in /api/)
