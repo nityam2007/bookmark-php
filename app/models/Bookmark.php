@@ -305,6 +305,28 @@ class Bookmark extends BaseModel
     }
 
     /**
+     * Check if a duplicate exists with EXACT same URL AND same category
+     * For smarter import duplicate detection
+     * - www.example.com and example.com are DIFFERENT (unique)
+     * - http and https are DIFFERENT (unique)
+     * - Only skip if BOTH URL and category are exactly the same
+     */
+    public static function duplicateExistsInCategory(string $url, ?int $categoryId = null): bool
+    {
+        $url = trim($url);
+        
+        if ($categoryId === null) {
+            $sql = "SELECT COUNT(*) FROM bookmarks WHERE url = ? AND category_id IS NULL";
+            $params = [$url];
+        } else {
+            $sql = "SELECT COUNT(*) FROM bookmarks WHERE url = ? AND category_id = ?";
+            $params = [$url, $categoryId];
+        }
+        
+        return (int) Database::fetchColumn($sql, $params) > 0;
+    }
+
+    /**
      * Get bookmarks that need meta refresh
      */
     public static function getNeedingMetaRefresh(int $limit = 50, int $ageThresholdDays = 7): array

@@ -8,6 +8,7 @@ A production-ready, fast, and modular bookmark management system built with PHP 
 - 📁 **Nested Categories** - Support for up to 10 levels of category hierarchy
 - 🏷️ **Flexible Tagging** - Tag bookmarks for quick filtering
 - 📥 **Import/Export** - Support for JSON, HTML (browser format), and CSV
+- 📥 **Smart Duplicate Detection** - Skip duplicates only when URL AND category match exactly
 - 🌙 **Dark Mode** - Automatic theme detection with manual toggle
 - 🔒 **Secure by Default** - CSRF protection, XSS prevention, prepared statements
 - 🇪🇺 **GDPR Compliant** - Cookie consent and data privacy features
@@ -17,6 +18,7 @@ A production-ready, fast, and modular bookmark management system built with PHP 
 - 🖼️ **Image Caching** - Automatic favicon and image caching
 - 🔄 **Meta Fetching** - Automatic title and description extraction from URLs
 - 🧩 **Browser Extension** - Chrome/Edge extension for quick bookmark saving
+- 🛠️ **Web Installer** - Easy setup wizard for shared hosting
 
 ## Requirements
 
@@ -24,12 +26,11 @@ A production-ready, fast, and modular bookmark management system built with PHP 
 - Docker Engine 20.10+
 - Docker Compose 2.0+
 
-### For Manual Installation
-- PHP 8.2 or higher
+### For Manual/Shared Hosting Installation
+- PHP 8.1 or higher
 - MySQL 8.0+ or MariaDB 10.5+
 - Apache with mod_rewrite (or nginx)
-- cURL extension for PHP
-- JSON extension for PHP
+- Required PHP extensions: pdo, pdo_mysql, json, mbstring, curl, openssl
 
 ## Installation
 
@@ -55,9 +56,21 @@ The application will be available at `http://localhost:8080`.
 - User: `bookmark_user`
 - Password: `bookmark_pass`
 
-### Option 2: Manual Installation
+### Option 2: Web Installer (Shared Hosting)
 
-### Option 2: Manual Installation
+For cPanel, Plesk, or any shared hosting with PHP 8.1+ and MySQL:
+
+1. **Upload Files** - Upload all files to your web hosting via FTP/File Manager
+2. **Point Domain** - Set your domain's document root to the `public` folder
+3. **Run Installer** - Visit `https://yourdomain.com/install.php`
+4. **Follow Wizard** - The installer will:
+   - Check system requirements
+   - Configure database connection
+   - Create database tables
+   - Set up admin account
+5. **Delete Installer** - Remove `install.php` after installation for security
+
+### Option 3: Manual Installation
 
 #### 1. Upload Files
 

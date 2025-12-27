@@ -138,8 +138,9 @@ class ImportExportService
                         continue;
                     }
 
-                    // Skip if EXACT URL exists
-                    if (Bookmark::exactUrlExists($url)) {
+                    // Skip if same normalized URL exists in the same category
+                    // Treats http/https, www/non-www as equivalent
+                    if (Bookmark::duplicateExistsInCategory($url, $categoryId)) {
                         $result['skipped']++;
                         continue;
                     }
@@ -252,19 +253,17 @@ class ImportExportService
                     continue;
                 }
 
-                // Skip if EXACT URL exists (strict duplicate detection)
-                // https://example.com and https://example.com/ are different
-                // http://example.com and https://example.com are different
-                // www.example.com and example.com are different
-                if (Bookmark::exactUrlExists($url)) {
-                    $result['skipped']++;
-                    continue;
-                }
-
-                // Handle category
+                // Handle category first (needed for duplicate check)
                 $categoryId = null;
                 if (!empty($data['category'])) {
                     $categoryId = $this->findOrCreateCategory($data['category']);
+                }
+
+                // Skip if same normalized URL exists in the same category
+                // Treats http/https, www/non-www, trailing slashes as equivalent
+                if (Bookmark::duplicateExistsInCategory($url, $categoryId)) {
+                    $result['skipped']++;
+                    continue;
                 }
 
                 // Truncate title to fit database column (255 chars max)

@@ -5,10 +5,17 @@
 
 use App\Core\View;
 use App\Helpers\Csrf;
+use App\Models\Category;
 
 $bookmark = $bookmark ?? [];
 $tags = $bookmark['tags'] ?? [];
 $category = $bookmark['category'] ?? null;
+
+// Get category path if category exists
+$categoryPath = null;
+if ($category && !empty($category['id'])) {
+    $categoryPath = Category::getPathString((int)$category['id'], ' > ');
+}
 
 // Check if we have meta data
 $hasMeta = !empty($bookmark['meta_title']) || !empty($bookmark['meta_description']);
@@ -75,13 +82,13 @@ $hasMeta = !empty($bookmark['meta_title']) || !empty($bookmark['meta_description
         <?php endif; ?>
         
         <div class="detail-meta">
-            <?php if ($category): ?>
-                <span class="meta-item">
+            <?php if ($categoryPath): ?>
+                <a href="/bookmarks?category=<?= $category['id'] ?>" class="meta-item meta-category-link">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"></path>
                     </svg>
-                    <?= View::e($category['name']) ?>
-                </span>
+                    <?= View::e($categoryPath) ?>
+                </a>
             <?php endif; ?>
             
             <span class="meta-item">
@@ -327,6 +334,15 @@ $hasMeta = !empty($bookmark['meta_title']) || !empty($bookmark['meta_description
     gap: 0.375rem;
     font-size: 0.875rem;
     color: var(--text-muted, #64748b);
+}
+
+.meta-category-link {
+    text-decoration: none;
+    color: var(--primary, #2563eb);
+}
+
+.meta-category-link:hover {
+    text-decoration: underline;
 }
 
 .meta-favorite {
