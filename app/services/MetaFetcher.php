@@ -32,6 +32,7 @@ class MetaFetcher
             'description' => null,
             'meta_image'  => null,
             'favicon'     => null,
+            'is_image'    => false,
             'success'     => false,
             'error'       => null
         ];
@@ -40,6 +41,11 @@ class MetaFetcher
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
             $result['error'] = 'Invalid URL';
             return $result;
+        }
+
+        // Check if URL is a direct image link
+        if ($this->isImageUrl($url)) {
+            return $this->handleImageUrl($url, $result);
         }
 
         try {
@@ -60,6 +66,76 @@ class MetaFetcher
             $result['error'] = $e->getMessage();
         }
 
+        return $result;
+    }
+
+    /**
+     * Check if URL points directly to an image
+     */
+    private function isImageUrl(string $url): bool
+    {
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'];
+        $parsedUrl = parse_url($url);
+        $path = $parsedUrl['path'] ?? '';
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        
+        // Check extension
+        if (in_array($ext, $imageExtensions)) {
+            return true;
+        }
+        
+        // Check for common image hosting patterns
+        $imageHosts = [
+            'i.imgur.com',
+            'i.redd.it', 
+            'pbs.twimg.com',
+            'cdn.discordapp.com/attachments',
+            'images.unsplash.com',
+            'upload.wikimedia.org'
+        ];
+        
+        $host = $parsedUrl['host'] ?? '';
+        foreach ($imageHosts as $imageHost) {
+            if (str_contains($host, $imageHost) || str_contains($path, $imageHost)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Handle direct image URLs - cache them and generate metadata
+     */
+    private function handleImageUrl(string $url, array $result): array
+    {
+        $result['is_image'] = true;
+        
+        // Generate title from filename
+        $parsedUrl = parse_url($url);
+        $path = $parsedUrl['path'] ?? '';
+        $filename = basename($path);
+        $title = pathinfo($filename, PATHINFO_FILENAME);
+        $title = preg_replace('/[-_]+/', ' ', $title); // Replace dashes/underscores with spaces
+        $title = ucwords(trim($title));
+        
+        $result['title'] = $title ?: 'Image';
+        $result['description'] = 'Image from ' . ($parsedUrl['host'] ?? 'unknown');
+        $result['meta_image'] = $url; // The URL itself is the image
+        
+        // Try to cache the image locally for offloading
+        try {
+            $imageCacheService = new ImageCacheService();
+            $cachedUrl = $imageCacheService->cacheImageForOffload($url);
+            if ($cachedUrl) {
+                $result['cached_image_path'] = $cachedUrl;
+            }
+        } catch (\Throwable $e) {
+            // Caching failed, but we still have the original URL
+            error_log("Failed to cache image {$url}: " . $e->getMessage());
+        }
+        
+        $result['success'] = true;
         return $result;
     }
 

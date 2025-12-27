@@ -13,7 +13,8 @@ namespace App\Services;
 class ImageCacheService
 {
     private string $cacheDir;
-    private int $maxAge = 86400 * 7; // 7 days
+    private int $maxAge = 86400 * 7; // 7 days for regular cached images
+    private int $offloadMaxAge = 86400 * 30; // 30 days for offloaded/full images
     private int $maxWidth = 800;
     private int $maxHeight = 600;
     private int $faviconSize = 64;
@@ -78,6 +79,93 @@ class ImageCacheService
         }
 
         return $result;
+    }
+
+    /**
+     * Cache full-size image for offloading (when URL is a direct image link)
+     * Used for bookmarking images directly - stores original without resizing
+     * 
+     * @param string $url Direct image URL
+     * @return string|null Local cached URL or null on failure
+     */
+    public function cacheImageForOffload(string $url): ?string
+    {
+        if (empty($url)) {
+            return null;
+        }
+
+        $hash = $this->getHash($url, 'offload');
+        $cachedFile = $this->getCachedFile($hash);
+        
+        // Return cached if exists and not expired (use longer expiry for offloaded images - 30 days)
+        if ($cachedFile && $this->isValidForOffload($cachedFile)) {
+            return '/img/cache.php?file=' . urlencode(basename($cachedFile));
+        }
+        
+        // Download without resizing (keep original)
+        $cached = $this->downloadAndCacheOriginal($url, $hash);
+        
+        return $cached ? '/img/cache.php?file=' . urlencode(basename($cached)) : null;
+    }
+
+    /**
+     * Check if cached file is valid for offloaded images (30 days)
+     */
+    private function isValidForOffload(string $filepath): bool
+    {
+        $maxAge = 86400 * 30; // 30 days for offloaded images
+        return file_exists($filepath) && (time() - filemtime($filepath)) < $maxAge;
+    }
+
+    /**
+     * Download and cache original image without resizing
+     */
+    private function downloadAndCacheOriginal(string $url, string $hash): ?string
+    {
+        try {
+            if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                return null;
+            }
+
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL            => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_MAXREDIRS      => 5,
+                CURLOPT_TIMEOUT        => 30, // Longer timeout for full images
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; BookmarkBot/1.0)',
+                CURLOPT_HTTPHEADER     => ['Accept: image/*'],
+            ]);
+
+            $data = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+            curl_close($ch);
+
+            if ($httpCode !== 200 || empty($data)) {
+                return null;
+            }
+
+            $contentType = explode(';', $contentType)[0];
+            $ext = $this->supportedTypes[$contentType] ?? $this->detectExtension($data);
+
+            if (!$ext) {
+                return null;
+            }
+
+            $filename = $hash . '.' . $ext;
+            $filepath = $this->cacheDir . '/' . $filename;
+
+            // Save original without processing
+            file_put_contents($filepath, $data);
+
+            return $filepath;
+        } catch (\Throwable $e) {
+            error_log("ImageCache offload error for {$url}: " . $e->getMessage());
+            return null;
+        }
     }
 
     /**

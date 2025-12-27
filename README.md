@@ -15,7 +15,8 @@ A production-ready, fast, and modular bookmark management system built with PHP 
 - 📱 **Responsive Design** - Mobile-first approach
 - ⌨️ **Keyboard Shortcuts** - Power user friendly
 - 🐳 **Docker Ready** - Easy deployment with Docker Compose
-- 🖼️ **Image Caching** - Automatic favicon and image caching
+- 🖼️ **Image Caching** - Automatic favicon and image caching (weekly refresh for bandwidth efficiency)
+- 🖼️ **Image URL Support** - Save image URLs directly with automatic offloading/caching
 - 🔄 **Meta Fetching** - Automatic title and description extraction from URLs
 - 🧩 **Browser Extension** - Chrome/Edge extension for quick bookmark saving
 - 🛠️ **Web Installer** - Easy setup wizard for shared hosting
@@ -134,14 +135,14 @@ chmod 644 app/config/config.json
 In cPanel > Cron Jobs, add:
 
 ```
-# Refresh bookmark metadata every 6 hours
-0 */6 * * * /usr/local/bin/php /home/username/bookmark-manager/cron/refresh-meta.php
+# Refresh bookmark metadata weekly (Sunday 4 AM)
+0 4 * * 0 /usr/local/bin/php /home/username/bookmark-manager/cron/refresh-meta.php
 
-# Cache bookmark images daily at 2 AM
-0 2 * * * /usr/local/bin/php /home/username/bookmark-manager/cron/cache-images.php
+# Cache bookmark images weekly (Sunday 3 AM) - bandwidth efficient
+0 3 * * 0 /usr/local/bin/php /home/username/bookmark-manager/cron/cache-images.php
 
-# Cleanup expired cache daily at 3 AM
-0 3 * * * /usr/local/bin/php /home/username/bookmark-manager/cron/cleanup.php
+# Cleanup expired cache weekly (Sunday 2 AM)
+0 2 * * 0 /usr/local/bin/php /home/username/bookmark-manager/cron/cleanup.php
 ```
 
 #### 6. Create Admin User

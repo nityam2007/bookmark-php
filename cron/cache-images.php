@@ -12,8 +12,11 @@
  * - CORS/privacy issues with external image requests
  * 
  * CRON SETUP:
- * Run once per hour:
- * 0 * * * * /usr/bin/php /path/to/cron/cache-images.php >> /path/to/logs/cache-images.log 2>&1
+ * Run weekly for bandwidth efficiency (recommended):
+ * 0 3 * * 0 /usr/bin/php /path/to/cron/cache-images.php >> /path/to/logs/cache-images.log 2>&1
+ * 
+ * Or run daily if you add many bookmarks:
+ * 0 3 * * * /usr/bin/php /path/to/cron/cache-images.php >> /path/to/logs/cache-images.log 2>&1
  * 
  * OPTIONS:
  * --batch=100     Number of bookmarks to process per run (default: 100)
