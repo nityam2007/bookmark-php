@@ -7,12 +7,8 @@ RewriteEngine On
 # Set base path (adjust if in subdirectory)
 # RewriteBase /
 
-# Redirect to installer if not configured
-RewriteCond %{REQUEST_FILENAME} !install\.php
-RewriteCond %{DOCUMENT_ROOT}/app/config/config.json !-f
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ install.php [L,R=302]
+# Allow install.php, public assets, and API endpoints
+RewriteRule ^install\.php$ - [L]
 
 # Deny access to sensitive directories
 RewriteRule ^app/ - [F,L]
@@ -21,15 +17,22 @@ RewriteRule ^logs/ - [F,L]
 RewriteRule ^cron/ - [F,L]
 RewriteRule ^database/ - [F,L]
 RewriteRule ^browser-extension/ - [F,L]
+RewriteRule ^vendor/ - [F,L]
 
-# Allow direct access to public assets
-RewriteCond %{REQUEST_URI} ^/public/(css|js|img|errors)/ [NC]
+# Allow direct access to public assets (css, js, img, errors)
+RewriteCond %{REQUEST_URI} ^/public/(css|js|img|errors|api)/ [NC]
 RewriteRule ^public/(.*)$ public/$1 [L]
 
+# Allow existing files and directories in public folder
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Check if file exists in public folder
+RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+RewriteRule ^(.*)$ public/$1 [L]
+
 # Route all other requests through public/index.php
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} !^/public/
 RewriteRule ^(.*)$ public/index.php [L,QSA]
 
 # Security headers
@@ -48,8 +51,8 @@ Options -Indexes
     Deny from all
 </FilesMatch>
 
-# Deny access to sensitive files
-<FilesMatch "(^#.*#|\.(bak|config|json|lock|md|sql|txt|yml|yaml)|~)$">
+# Deny access to sensitive files in root
+<FilesMatch "(^#.*#|\.(bak|config|lock|sql|yml|yaml)|~)$">
     Order allow,deny
     Deny from all
 </FilesMatch>

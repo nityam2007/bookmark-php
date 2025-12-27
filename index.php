@@ -23,6 +23,16 @@ if (file_exists(__DIR__ . '/install.php') && !file_exists(__DIR__ . '/app/config
     exit;
 }
 
-// Forward to public/index.php
+// Set working directory to public folder
 chdir(__DIR__ . '/public');
+
+// Remove /public from REQUEST_URI if present (for proper routing)
+if (isset($_SERVER['REQUEST_URI'])) {
+    $_SERVER['REQUEST_URI'] = preg_replace('#^/public#', '', $_SERVER['REQUEST_URI']);
+    if (empty($_SERVER['REQUEST_URI'])) {
+        $_SERVER['REQUEST_URI'] = '/';
+    }
+}
+
+// Forward to public/index.php
 require __DIR__ . '/public/index.php';
