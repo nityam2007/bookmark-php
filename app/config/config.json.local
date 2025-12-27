@@ -1,0 +1,52 @@
+{
+    "database": {
+        "host": "mysql",
+        "name": "bookmarks_db",
+        "user": "bookmark_user",
+        "pass": "bookmark_pass",
+        "charset": "utf8mb4",
+        "port": 3306
+    },
+    "app": {
+        "name": "Bookmark Manager",
+        "url": "http://localhost:8080",
+        "debug": true,
+        "timezone": "UTC"
+    },
+    "security": {
+        "session_lifetime": 3600,
+        "csrf_lifetime": 1800,
+        "password_min_length": 8,
+        "max_login_attempts": 5,
+        "lockout_time": 900,
+        "secret": "GENERATE_A_NEW_SECRET_WITH_bin2hex_random_bytes_32"
+    },
+    "search": {
+        "cache_ttl": 300,
+        "min_length": 2,
+        "max_results": 100,
+        "debounce_ms": 300
+    },
+    "pagination": {
+        "per_page": 24,
+        "max_pages": 5
+    },
+    "meta": {
+        "timeout": 10,
+        "user_agent": "BookmarkManager/1.0 (+https://github.com/bookmark-manager)",
+        "max_retries": 3
+    },
+    "import": {
+        "max_size": 10485760
+    },
+    "export": {
+        "chunk_size": 500
+    },
+    "categories": {
+        "max_depth": 10
+    },
+    "gdpr": {
+        "enabled": true,
+        "cookie_consent_required": true
+    }
+}

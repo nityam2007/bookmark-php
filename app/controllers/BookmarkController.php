@@ -317,4 +317,120 @@ class BookmarkController extends BaseController
 
         $this->redirect('/bookmarks');
     }
+
+    /**
+     * Fetch metadata for a bookmark
+     */
+    public function fetchMeta(string $id): void
+    {
+        $this->requireAuth();
+        $this->validateCsrf();
+
+        $bookmark = Bookmark::find((int)$id);
+        
+        if (!$bookmark) {
+            $this->flash('error', 'Bookmark not found');
+            $this->redirect('/bookmarks');
+        }
+
+        try {
+            // Use EnhancedMetaFetcher to get metadata
+            $fetcher = new \App\Services\EnhancedMetaFetcher();
+            $meta = $fetcher->fetch($bookmark['url']);
+
+            // Check if this is a direct image URL (content-type is image/*)
+            $contentType = $meta['content_type'] ?? '';
+            $isDirectImage = str_starts_with($contentType, 'image/');
+            
+            if ($isDirectImage) {
+                // Handle direct image URLs - cache the image itself
+                $imageCache = new \App\Services\ImageCacheService();
+                $cachedImage = $imageCache->cacheImageForOffload($bookmark['url']);
+                
+                // Extract filename from URL for title
+                $urlPath = parse_url($bookmark['url'], PHP_URL_PATH);
+                $filename = $urlPath ? basename($urlPath) : 'Image';
+                $host = parse_url($bookmark['url'], PHP_URL_HOST) ?? '';
+                
+                $updateData = [
+                    'meta_title'        => $filename,
+                    'meta_description'  => 'Image from ' . $host,
+                    'meta_site_name'    => $host,
+                    'meta_type'         => 'image',
+                    'meta_image'        => $cachedImage ?: null,
+                    'http_status'       => $meta['http_status'] ?? null,
+                    'content_type'      => $contentType,
+                    'meta_fetch_error'  => null,
+                    'meta_fetched_at'   => date('Y-m-d H:i:s')
+                ];
+                
+                Bookmark::update((int)$id, $updateData);
+                $this->flash('success', 'Image cached successfully!');
+                
+            } elseif ($meta && !isset($meta['error'])) {
+                // Update bookmark with fetched metadata
+                $updateData = [
+                    'meta_title'        => $meta['title'] ?? null,
+                    'meta_description'  => $meta['description'] ?? null,
+                    'meta_site_name'    => $meta['site_name'] ?? null,
+                    'meta_type'         => $meta['type'] ?? null,
+                    'meta_author'       => $meta['author'] ?? null,
+                    'meta_keywords'     => $meta['keywords'] ?? null,
+                    'meta_locale'       => $meta['locale'] ?? null,
+                    'meta_image'        => $meta['image'] ?? null,
+                    'favicon'           => $meta['favicon'] ?? null,
+                    'http_status'       => $meta['http_status'] ?? null,
+                    'content_type'      => $meta['content_type'] ?? null,
+                    'meta_fetch_error'  => null,
+                    'meta_fetched_at'   => date('Y-m-d H:i:s')
+                ];
+
+                // Cache images before saving
+                $imageCache = new \App\Services\ImageCacheService();
+                
+                // Cache meta image
+                if (!empty($updateData['meta_image'])) {
+                    try {
+                        $cachedImage = $imageCache->getCachedUrl($updateData['meta_image'], 'image');
+                        if ($cachedImage) {
+                            $updateData['meta_image'] = $cachedImage;
+                        }
+                    } catch (\Exception $e) {
+                        // Keep original URL if caching fails
+                    }
+                }
+                
+                // Cache favicon
+                if (!empty($updateData['favicon'])) {
+                    try {
+                        $cachedFavicon = $imageCache->getCachedUrl($updateData['favicon'], 'favicon');
+                        if ($cachedFavicon) {
+                            $updateData['favicon'] = $cachedFavicon;
+                        }
+                    } catch (\Exception $e) {
+                        // Keep original URL if caching fails
+                    }
+                }
+
+                Bookmark::update((int)$id, $updateData);
+
+                $this->flash('success', 'Metadata fetched successfully!');
+            } else {
+                $error = $meta['error'] ?? 'Unknown error';
+                Bookmark::update((int)$id, [
+                    'meta_fetch_error' => $error,
+                    'meta_fetched_at'  => date('Y-m-d H:i:s')
+                ]);
+                $this->flash('warning', 'Could not fetch metadata: ' . $error);
+            }
+        } catch (\Exception $e) {
+            Bookmark::update((int)$id, [
+                'meta_fetch_error' => $e->getMessage(),
+                'meta_fetched_at'  => date('Y-m-d H:i:s')
+            ]);
+            $this->flash('error', 'Error fetching metadata: ' . $e->getMessage());
+        }
+
+        $this->redirect('/bookmarks/' . $id);
+    }
 }

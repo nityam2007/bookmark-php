@@ -54,6 +54,7 @@ $router->get('/bookmarks/create', [BookmarkController::class, 'create']);
 $router->post('/bookmarks', [BookmarkController::class, 'store']);
 $router->get('/bookmarks/{id}/edit', [BookmarkController::class, 'edit']);
 $router->get('/bookmarks/{id}/visit', [BookmarkController::class, 'visit']);
+$router->post('/bookmarks/{id}/fetch-meta', [BookmarkController::class, 'fetchMeta']);
 $router->post('/bookmarks/{id}/delete', [BookmarkController::class, 'destroy']);
 $router->post('/bookmarks/{id}/favorite', [BookmarkController::class, 'toggleFavorite']);
 $router->get('/bookmarks/{id}', [BookmarkController::class, 'show']);

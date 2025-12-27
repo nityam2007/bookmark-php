@@ -332,12 +332,11 @@ class ImportExportService
     }
 
     /**
-     * Parse HTML bookmark format
+     * Parse HTML bookmark format with full hierarchy support
      */
     private function parseHtmlBookmarks(string $html): array
     {
         $bookmarks = [];
-        $currentFolder = null;
 
         libxml_use_internal_errors(true);
         $doc = new \DOMDocument();
@@ -356,17 +355,21 @@ class ImportExportService
                 continue;
             }
 
-            // Find parent folder (DT > A, parent DL, previous sibling H3)
-            $folder = $this->findParentFolder($link);
+            // Find full folder path (e.g., "Parent/Child/Grandchild")
+            $folderPath = $this->findFolderPath($link);
             
             // Get add_date attribute (Unix timestamp - standard in browser exports)
             $addDate = $link->getAttribute('add_date') ?: null;
+            
+            // Get icon if present
+            $icon = $link->getAttribute('icon') ?: null;
 
             $bookmarks[] = [
-                'url'      => $url,
-                'title'    => trim($link->nodeValue) ?: null,
-                'category' => $folder,
-                'add_date' => $addDate
+                'url'         => $url,
+                'title'       => trim($link->nodeValue) ?: null,
+                'category'    => $folderPath, // Full path like "Work/Projects/Active"
+                'add_date'    => $addDate,
+                'favicon'     => $icon
             ];
         }
 
@@ -374,7 +377,51 @@ class ImportExportService
     }
 
     /**
-     * Find parent folder name for a bookmark
+     * Find full folder path for a bookmark (handles nested folders)
+     * Returns path like "Parent/Child/Grandchild"
+     */
+    private function findFolderPath(\DOMElement $link): ?string
+    {
+        $folders = [];
+        $node = $link->parentNode;
+        
+        while ($node) {
+            if ($node->nodeName === 'DL' && $node->previousSibling) {
+                $prev = $node->previousSibling;
+                
+                // Skip text nodes and whitespace
+                while ($prev && $prev->nodeType === XML_TEXT_NODE) {
+                    $prev = $prev->previousSibling;
+                }
+                
+                // Also check if prev is a DT containing H3
+                if ($prev && $prev->nodeName === 'DT') {
+                    // Look for H3 inside DT
+                    foreach ($prev->childNodes as $child) {
+                        if ($child->nodeName === 'H3') {
+                            $folderName = trim($child->nodeValue);
+                            // Skip special toolbar folders but keep the name
+                            if (!empty($folderName) && $folderName !== 'Bookmarks') {
+                                array_unshift($folders, $folderName);
+                            }
+                            break;
+                        }
+                    }
+                } elseif ($prev && $prev->nodeName === 'H3') {
+                    $folderName = trim($prev->nodeValue);
+                    if (!empty($folderName) && $folderName !== 'Bookmarks') {
+                        array_unshift($folders, $folderName);
+                    }
+                }
+            }
+            $node = $node->parentNode;
+        }
+        
+        return !empty($folders) ? implode('/', $folders) : null;
+    }
+
+    /**
+     * Find parent folder name for a bookmark (legacy - single level)
      */
     private function findParentFolder(\DOMElement $link): ?string
     {
@@ -400,11 +447,17 @@ class ImportExportService
     }
 
     /**
-     * Find or create category by name
+     * Find or create category by name or path
+     * Supports hierarchical paths like "Parent/Child/Grandchild"
      */
-    private function findOrCreateCategory(string $name): int
+    private function findOrCreateCategory(string $nameOrPath): int
     {
-        $slug = \App\Helpers\Sanitizer::slug($name);
+        // Check if it's a path
+        if (str_contains($nameOrPath, '/')) {
+            return $this->findOrCreateCategoryPath($nameOrPath);
+        }
+        
+        $slug = \App\Helpers\Sanitizer::slug($nameOrPath);
         $existing = Category::findBy('slug', $slug);
         
         if ($existing) {
@@ -412,64 +465,201 @@ class ImportExportService
         }
 
         return Category::createCategory([
-            'name'        => $name,
+            'name'        => $nameOrPath,
             'parent_id'   => null,
             'description' => 'Imported category'
         ]);
     }
+    
+    /**
+     * Find or create hierarchical category path
+     * e.g., "Work/Projects/Active" creates Work -> Projects -> Active
+     */
+    private function findOrCreateCategoryPath(string $path): int
+    {
+        $parts = array_filter(array_map('trim', explode('/', $path)));
+        
+        if (empty($parts)) {
+            return 0;
+        }
+        
+        $parentId = null;
+        $categoryId = null;
+        
+        foreach ($parts as $index => $name) {
+            $slug = \App\Helpers\Sanitizer::slug($name);
+            
+            // Look for existing category with this name and parent
+            if ($parentId === null) {
+                $sql = "SELECT * FROM categories WHERE slug = ? AND parent_id IS NULL LIMIT 1";
+                $existing = Database::fetch($sql, [$slug]);
+            } else {
+                $sql = "SELECT * FROM categories WHERE slug = ? AND parent_id = ? LIMIT 1";
+                $existing = Database::fetch($sql, [$slug, $parentId]);
+            }
+            
+            if ($existing) {
+                $categoryId = $existing['id'];
+            } else {
+                // Create the category
+                $categoryId = Category::createCategory([
+                    'name'        => $name,
+                    'parent_id'   => $parentId,
+                    'description' => 'Imported from bookmarks'
+                ]);
+            }
+            
+            $parentId = $categoryId;
+        }
+        
+        return $categoryId;
+    }
 
     /**
      * Export to JSON (streaming for large datasets)
+     * Exports full data with all metadata fields and hierarchical categories
      */
     public function exportJson(): void
     {
         header('Content-Type: application/json; charset=utf-8');
         header('Content-Disposition: attachment; filename="bookmarks_' . date('Y-m-d') . '.json"');
 
-        echo '{"bookmarks":[';
-
-        $offset = 0;
-        $first = true;
-        $chunkSize = EXPORT_CHUNK_SIZE;
-
-        while (true) {
-            $sql = "SELECT b.*, c.name as category_name 
-                    FROM bookmarks b
-                    LEFT JOIN categories c ON b.category_id = c.id
-                    ORDER BY b.id
-                    LIMIT {$chunkSize} OFFSET {$offset}";
-            
-            $bookmarks = Database::fetchAll($sql);
-            
-            if (empty($bookmarks)) {
-                break;
-            }
-
-            // Get tags for chunk
-            $ids = array_column($bookmarks, 'id');
-            $tags = $this->getTagsForBookmarks($ids);
-
-            foreach ($bookmarks as $bookmark) {
-                if (!$first) echo ',';
-                $first = false;
-                
-                echo json_encode([
-                    'url'         => $bookmark['url'],
-                    'title'       => $bookmark['title'],
-                    'description' => $bookmark['description'],
-                    'category'    => $bookmark['category_name'],
-                    'tags'        => array_column($tags[$bookmark['id']] ?? [], 'name'),
-                    'is_favorite' => (bool)$bookmark['is_favorite'],
-                    'created_at'  => $bookmark['created_at']
-                ], JSON_UNESCAPED_UNICODE);
-                
-                flush();
-            }
-
-            $offset += $chunkSize;
+        // Build hierarchical structure like Linkwarden format
+        $output = [
+            'version' => '1.0',
+            'exported_at' => date('c'),
+            'collections' => [],
+            'pinnedLinks' => []
+        ];
+        
+        // Get category tree with bookmarks
+        $categories = Category::getTree();
+        $output['collections'] = $this->buildCollectionTree($categories);
+        
+        // Add uncategorized as a special collection
+        $uncategorized = $this->getUncategorizedBookmarks();
+        if (!empty($uncategorized)) {
+            $output['collections'][] = [
+                'id' => 0,
+                'name' => 'Uncategorized',
+                'description' => 'Bookmarks without a category',
+                'parentId' => null,
+                'color' => null,
+                'links' => $uncategorized
+            ];
         }
-
-        echo ']}';
+        
+        // Get pinned/favorite bookmarks
+        $favorites = Database::fetchAll("SELECT url FROM bookmarks WHERE is_favorite = 1");
+        $output['pinnedLinks'] = array_map(fn($f) => ['url' => $f['url']], $favorites);
+        
+        echo json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+    
+    /**
+     * Build hierarchical collection tree for JSON export
+     */
+    private function buildCollectionTree(array $categories, ?int $parentId = null): array
+    {
+        $collections = [];
+        
+        foreach ($categories as $category) {
+            $collection = [
+                'id' => $category['id'],
+                'name' => $category['name'],
+                'description' => $category['description'] ?? null,
+                'parentId' => $parentId,
+                'color' => $category['color'] ?? null,
+                'links' => $this->getCategoryBookmarksForExport($category['id'])
+            ];
+            
+            $collections[] = $collection;
+            
+            // Add children as separate collections with parentId set
+            if (!empty($category['children'])) {
+                $childCollections = $this->buildCollectionTree($category['children'], $category['id']);
+                $collections = array_merge($collections, $childCollections);
+            }
+        }
+        
+        return $collections;
+    }
+    
+    /**
+     * Get bookmarks for a category with all metadata for export
+     */
+    private function getCategoryBookmarksForExport(int $categoryId): array
+    {
+        $sql = "SELECT * FROM bookmarks WHERE category_id = ? ORDER BY created_at DESC";
+        $bookmarks = Database::fetchAll($sql, [$categoryId]);
+        
+        $ids = array_column($bookmarks, 'id');
+        $tags = $this->getTagsForBookmarks($ids);
+        
+        $links = [];
+        foreach ($bookmarks as $b) {
+            $links[] = [
+                'url' => $b['url'],
+                'name' => $b['title'],
+                'description' => $b['description'],
+                'tags' => array_map(fn($t) => ['name' => $t['name']], $tags[$b['id']] ?? []),
+                'createdAt' => $b['created_at'],
+                'updatedAt' => $b['updated_at'],
+                // All metadata fields
+                'meta_title' => $b['meta_title'],
+                'meta_description' => $b['meta_description'],
+                'meta_image' => $b['meta_image'],
+                'meta_site_name' => $b['meta_site_name'],
+                'meta_type' => $b['meta_type'],
+                'meta_author' => $b['meta_author'],
+                'meta_keywords' => $b['meta_keywords'],
+                'meta_locale' => $b['meta_locale'],
+                'favicon' => $b['favicon'],
+                'http_status' => $b['http_status'],
+                'content_type' => $b['content_type'],
+                'is_favorite' => (bool)$b['is_favorite']
+            ];
+        }
+        
+        return $links;
+    }
+    
+    /**
+     * Get uncategorized bookmarks for export
+     */
+    private function getUncategorizedBookmarks(): array
+    {
+        $sql = "SELECT * FROM bookmarks WHERE category_id IS NULL ORDER BY created_at DESC";
+        $bookmarks = Database::fetchAll($sql);
+        
+        $ids = array_column($bookmarks, 'id');
+        $tags = $this->getTagsForBookmarks($ids);
+        
+        $links = [];
+        foreach ($bookmarks as $b) {
+            $links[] = [
+                'url' => $b['url'],
+                'name' => $b['title'],
+                'description' => $b['description'],
+                'tags' => array_map(fn($t) => ['name' => $t['name']], $tags[$b['id']] ?? []),
+                'createdAt' => $b['created_at'],
+                'updatedAt' => $b['updated_at'],
+                'meta_title' => $b['meta_title'],
+                'meta_description' => $b['meta_description'],
+                'meta_image' => $b['meta_image'],
+                'meta_site_name' => $b['meta_site_name'],
+                'meta_type' => $b['meta_type'],
+                'meta_author' => $b['meta_author'],
+                'meta_keywords' => $b['meta_keywords'],
+                'meta_locale' => $b['meta_locale'],
+                'favicon' => $b['favicon'],
+                'http_status' => $b['http_status'],
+                'content_type' => $b['content_type'],
+                'is_favorite' => (bool)$b['is_favorite']
+            ];
+        }
+        
+        return $links;
     }
 
     /**
@@ -527,7 +717,8 @@ class ImportExportService
     }
 
     /**
-     * Export to HTML (browser bookmark format)
+     * Export to HTML (browser bookmark format - Netscape standard)
+     * Creates proper hierarchical folder structure matching categories
      */
     public function exportHtml(): void
     {
@@ -535,12 +726,26 @@ class ImportExportService
         header('Content-Disposition: attachment; filename="bookmarks_' . date('Y-m-d') . '.html"');
 
         echo "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n";
+        echo "<!-- This is an automatically generated file.\n";
+        echo "     It will be read and overwritten.\n";
+        echo "     DO NOT EDIT! -->\n";
         echo "<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">\n";
         echo "<TITLE>Bookmarks</TITLE>\n";
         echo "<H1>Bookmarks</H1>\n";
         echo "<DL><p>\n";
 
-        // Group by category
+        // Favorites/Bookmarks Bar equivalent
+        $favorites = Database::fetchAll("SELECT * FROM bookmarks WHERE is_favorite = 1 ORDER BY title");
+        if (!empty($favorites)) {
+            echo "    <DT><H3 PERSONAL_TOOLBAR_FOLDER=\"true\">Favorites</H3>\n";
+            echo "    <DL><p>\n";
+            foreach ($favorites as $bookmark) {
+                $this->exportBookmarkHtml($bookmark, 2);
+            }
+            echo "    </DL><p>\n";
+        }
+
+        // Group by category (hierarchical)
         $categories = Category::getTree();
         $this->exportCategoryHtml($categories);
 
@@ -548,8 +753,13 @@ class ImportExportService
         $sql = "SELECT * FROM bookmarks WHERE category_id IS NULL ORDER BY title";
         $uncategorized = Database::fetchAll($sql);
         
-        foreach ($uncategorized as $bookmark) {
-            $this->exportBookmarkHtml($bookmark);
+        if (!empty($uncategorized)) {
+            echo "    <DT><H3>Uncategorized</H3>\n";
+            echo "    <DL><p>\n";
+            foreach ($uncategorized as $bookmark) {
+                $this->exportBookmarkHtml($bookmark, 2);
+            }
+            echo "    </DL><p>\n";
         }
 
         echo "</DL><p>\n";
@@ -560,7 +770,16 @@ class ImportExportService
         $pad = str_repeat('    ', $indent);
         
         foreach ($categories as $category) {
-            echo "{$pad}<DT><H3>" . htmlspecialchars($category['name']) . "</H3>\n";
+            // Folder timestamp
+            $folderDate = strtotime($category['created_at'] ?? 'now');
+            
+            echo "{$pad}<DT><H3 ADD_DATE=\"{$folderDate}\">" . htmlspecialchars($category['name']) . "</H3>\n";
+            
+            // Add description as DD if exists
+            if (!empty($category['description'])) {
+                echo "{$pad}<DD>" . htmlspecialchars($category['description']) . "\n";
+            }
+            
             echo "{$pad}<DL><p>\n";
             
             // Get bookmarks in this category
@@ -571,7 +790,7 @@ class ImportExportService
                 $this->exportBookmarkHtml($bookmark, $indent + 1);
             }
             
-            // Recurse into children
+            // Recurse into children (nested folders)
             if (!empty($category['children'])) {
                 $this->exportCategoryHtml($category['children'], $indent + 1);
             }
@@ -584,9 +803,28 @@ class ImportExportService
     {
         $pad = str_repeat('    ', $indent);
         $url = htmlspecialchars($bookmark['url']);
-        $title = htmlspecialchars($bookmark['title'] ?? $bookmark['url']);
+        $title = htmlspecialchars($bookmark['title'] ?: $bookmark['meta_title'] ?: $bookmark['url']);
         
-        echo "{$pad}<DT><A HREF=\"{$url}\">{$title}</A>\n";
+        // Standard attributes for browser import
+        $addDate = strtotime($bookmark['created_at'] ?? 'now');
+        $lastModified = strtotime($bookmark['updated_at'] ?? $bookmark['created_at'] ?? 'now');
+        
+        // Build attributes string
+        $attrs = "HREF=\"{$url}\" ADD_DATE=\"{$addDate}\" LAST_MODIFIED=\"{$lastModified}\"";
+        
+        // Add icon if favicon exists (data URI or path)
+        if (!empty($bookmark['favicon'])) {
+            $icon = htmlspecialchars($bookmark['favicon']);
+            $attrs .= " ICON=\"{$icon}\"";
+        }
+        
+        echo "{$pad}<DT><A {$attrs}>{$title}</A>\n";
+        
+        // Add description if exists
+        $description = $bookmark['description'] ?: $bookmark['meta_description'];
+        if (!empty($description)) {
+            echo "{$pad}<DD>" . htmlspecialchars($description) . "\n";
+        }
     }
 
     private function getTagsForBookmarks(array $ids): array

@@ -23,6 +23,7 @@ External API for integrating with Chrome extensions, mobile apps, and other thir
   - [Chrome Extension](#chrome-extension)
   - [Bookmarklet](#bookmarklet)
 - [Rate Limiting](#rate-limiting)
+- [Import/Export Formats](#importexport-formats)
 
 ---
 
@@ -667,15 +668,25 @@ X-RateLimit-Reset: 1703688000
 
 ---
 
-## CORS Support
+## Import/Export Formats
 
-The API supports Cross-Origin Resource Sharing (CORS) for browser-based applications:
+### JSON Export/Import
+- **Format:** Linkwarden-compatible hierarchical collections
+- **Fields:** All metadata (title, description, meta_image, favicon, site name, type, author, keywords, locale, http_status, content_type, timestamps, tags, favorites)
+- **Hierarchy:** Categories exported as collections with parent/child relationships (`parentId`)
+- **Favorites:** Exported as `pinnedLinks` array
+- **Import:** Supports Linkwarden, Raindrop, and browser JSON formats
 
-```http
-Access-Control-Allow-Origin: *
-Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS
-Access-Control-Allow-Headers: Authorization, X-API-Key, Content-Type
-```
+### HTML Export/Import
+- **Format:** Netscape Bookmark File (browser standard)
+- **Hierarchy:** Full folder structure preserved (parent/child folders)
+- **Attributes:** `ADD_DATE`, `LAST_MODIFIED`, `ICON`, and descriptions included
+- **Favorites:** Exported as a special toolbar folder
+- **Import:** Nested folders are imported as hierarchical categories
+
+### CSV Export/Import
+- **Format:** Simple flat table
+- **Fields:** url, title, description, category, tags, is_favorite, created_at
 
 ---
 

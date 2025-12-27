@@ -181,6 +181,39 @@ try {
         $remaining = $config['max_timeout'] - $elapsed;
         $progress = $index + 1;
         
+        // Skip non-webpage URLs (scripts, binaries, media files, etc.)
+        $skipExtensions = [
+            // Scripts & binaries
+            'sh', 'bash', 'exe', 'msi', 'dmg', 'pkg', 'deb', 'rpm', 'AppImage',
+            // Archives
+            'zip', 'tar', 'gz', 'bz2', 'xz', '7z', 'rar', 'tgz',
+            // Media files
+            'mp3', 'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', 'wav', 'flac', 'ogg',
+            // Documents (usually no meta)
+            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods',
+            // Images (already handled separately)
+            'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'bmp', 'tiff',
+            // Other
+            'iso', 'bin', 'img', 'torrent'
+        ];
+        
+        $urlPath = parse_url($bookmark['url'], PHP_URL_PATH) ?? '';
+        $extension = strtolower(pathinfo($urlPath, PATHINFO_EXTENSION));
+        
+        if (in_array($extension, $skipExtensions)) {
+            logInfo("[{$progress}/{$totalBookmarks}] Skipping (file): {$bookmark['url']}", true);
+            $stats['skipped']++;
+            // Mark as fetched so we don't retry
+            Bookmark::updateMeta($bookmark['id'], [
+                'meta_title'       => pathinfo($urlPath, PATHINFO_BASENAME),
+                'meta_description' => "Direct file download (.{$extension})",
+                'meta_type'        => 'file',
+                'meta_fetched_at'  => date('Y-m-d H:i:s'),
+                'meta_fetch_error' => null
+            ]);
+            continue;
+        }
+        
         logInfo("[{$progress}/{$totalBookmarks}] Processing: {$bookmark['url']}", true);
         logInfo("  Time remaining: {$remaining}s", true);
 

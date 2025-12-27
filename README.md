@@ -366,30 +366,25 @@ See [browser-extension/README.md](browser-extension/README.md) for detailed docu
 
 ## Import/Export Formats
 
-### JSON Format
-```json
-{
-    "bookmarks": [
-        {
-            "url": "https://example.com",
-            "title": "Example",
-            "description": "Description here",
-            "category": "Category Name",
-            "tags": ["tag1", "tag2"],
-            "is_favorite": true
-        }
-    ]
-}
-```
+### JSON Export/Import
+- **Format:** Linkwarden-compatible hierarchical collections
+- **Fields:** All metadata (title, description, meta_image, favicon, site name, type, author, keywords, locale, http_status, content_type, timestamps, tags, favorites)
+- **Hierarchy:** Categories are exported as collections with parent/child relationships
+- **Favorites:** Exported as pinnedLinks array
+- **Import:** Supports Linkwarden, Raindrop, and browser JSON formats
 
-### HTML Format
-Standard Netscape Bookmark File format compatible with all major browsers.
+### HTML Export/Import
+- **Format:** Netscape Bookmark File (browser standard)
+- **Hierarchy:** Full folder structure preserved (parent/child folders)
+- **Attributes:** ADD_DATE, LAST_MODIFIED, ICON, and descriptions included
+- **Favorites:** Exported as a special toolbar folder
+- **Import:** Nested folders are imported as hierarchical categories
 
-### CSV Format
-```csv
-url,title,description,category,tags,is_favorite
-https://example.com,Example,Description,Category,"tag1,tag2",1
-```
+### CSV Export/Import
+- **Format:** Simple flat table
+- **Fields:** url, title, description, category, tags, is_favorite, created_at
+
+---
 
 ## Security Features
 

@@ -40,6 +40,16 @@ $hasMeta = !empty($bookmark['meta_title']) || !empty($bookmark['meta_description
                 </svg>
                 Visit
             </a>
+            <form action="/bookmarks/<?= $bookmark['id'] ?>/fetch-meta" method="POST" style="display:inline">
+                <?= Csrf::field() ?>
+                <button type="submit" class="btn btn-info" title="Fetch metadata from URL">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+                        <path d="M21 3v5h-5"></path>
+                    </svg>
+                    Fetch Meta
+                </button>
+            </form>
             <a href="/bookmarks/<?= $bookmark['id'] ?>/edit" class="btn btn-secondary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
@@ -408,6 +418,16 @@ $hasMeta = !empty($bookmark['meta_title']) || !empty($bookmark['meta_description
 
 .btn-danger:hover {
     background: #fee2e2;
+}
+
+.btn-info {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+}
+
+.btn-info:hover {
+    background: #dbeafe;
 }
 
 /* Meta Card Styles */
