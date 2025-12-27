@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # Apache + PHP 8.2
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - ./public:/var/www/html/public
+      - ./app:/var/www/html/app
+      - ./cache:/var/www/html/cache
+      - ./cron:/var/www/html/cron
+      - ./database:/var/www/html/database
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html/public
+    networks:
+      - bookmark-network
+
+  # MySQL 8
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: bookmarks_db
+      MYSQL_USER: bookmark_user
+      MYSQL_PASSWORD: bookmark_pass
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bookmark-network
+
+networks:
+  bookmark-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

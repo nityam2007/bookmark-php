@@ -1,0 +1,10 @@
+# Cache Directory
+This directory stores file-based cache data.
+
+**Important:** This directory should be writable by the web server.
+
+```bash
+chmod 777 cache/
+```
+
+The cache files are automatically managed by the application and the cleanup cron job.

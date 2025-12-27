@@ -1,0 +1,38 @@
+{
+    "database": {
+        "host": "localhost",
+        "name": "bookmarks_db",
+        "user": "your_username",
+        "password": "your_password",
+        "charset": "utf8mb4",
+        "port": 3306
+    },
+    "app": {
+        "name": "Bookmark Manager",
+        "url": "http://localhost",
+        "debug": false,
+        "timezone": "UTC",
+        "per_page": 20
+    },
+    "security": {
+        "session_lifetime": 7200,
+        "password_algo": "argon2id",
+        "csrf_token_lifetime": 3600
+    },
+    "cache": {
+        "enabled": true,
+        "ttl": 3600,
+        "driver": "file",
+        "path": "../cache"
+    },
+    "gdpr": {
+        "enabled": true,
+        "cookie_consent": true,
+        "data_retention_days": 365
+    },
+    "meta_fetch": {
+        "enabled": true,
+        "timeout": 5,
+        "user_agent": "BookmarkManager/1.0"
+    }
+}

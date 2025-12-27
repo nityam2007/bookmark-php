@@ -1,0 +1,38 @@
+# Configuration
+app/config/config.json
+
+# Cache
+cache/*
+!cache/.gitkeep
+!cache/images/
+cache/images/*
+!cache/images/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Composer (if used in future)
+/vendor/
+
+# Node (if used in future)
+/node_modules/
+
+# Docker volumes
+mysql_data/

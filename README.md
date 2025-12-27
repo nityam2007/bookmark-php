@@ -1,0 +1,366 @@
+# Bookmark Manager
+
+A production-ready, fast, and modular bookmark management system built with PHP 8.2+ and MySQL/MariaDB. Designed for both Docker deployment and cPanel shared hosting with a focus on speed, security, and maintainability.
+
+## Features
+
+- ⚡ **Fast Search** - Full-text search with AJAX and client-side caching
+- 📁 **Nested Categories** - Support for up to 10 levels of category hierarchy
+- 🏷️ **Flexible Tagging** - Tag bookmarks for quick filtering
+- 📥 **Import/Export** - Support for JSON, HTML (browser format), and CSV
+- 🌙 **Dark Mode** - Automatic theme detection with manual toggle
+- 🔒 **Secure by Default** - CSRF protection, XSS prevention, prepared statements
+- 🇪🇺 **GDPR Compliant** - Cookie consent and data privacy features
+- 📱 **Responsive Design** - Mobile-first approach
+- ⌨️ **Keyboard Shortcuts** - Power user friendly
+- 🐳 **Docker Ready** - Easy deployment with Docker Compose
+- 🖼️ **Image Caching** - Automatic favicon and image caching
+- 🔄 **Meta Fetching** - Automatic title and description extraction from URLs
+
+## Requirements
+
+### For Docker Deployment
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+
+### For Manual Installation
+- PHP 8.2 or higher
+- MySQL 8.0+ or MariaDB 10.5+
+- Apache with mod_rewrite (or nginx)
+- cURL extension for PHP
+- JSON extension for PHP
+
+## Installation
+
+### Option 1: Docker (Recommended)
+
+The easiest way to get started is using Docker:
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd bookmark-manager
+
+# Start the containers
+docker compose up -d
+```
+
+The application will be available at `http://localhost:8080`.
+
+**Default Docker Configuration:**
+- Web Server: `http://localhost:8080`
+- MySQL: `localhost:3306`
+- Database: `bookmarks_db`
+- User: `bookmark_user`
+- Password: `bookmark_pass`
+
+### Option 2: Manual Installation
+
+### Option 2: Manual Installation
+
+#### 1. Upload Files
+
+Upload all files to your web hosting. The `public` folder should be your document root.
+
+```
+/home/username/
+├── bookmark-manager/       # Application root
+│   ├── app/               # Application code
+│   ├── cache/             # Cache storage
+│   ├── cron/              # Cron scripts
+│   ├── database/          # Database schema
+│   └── public/            # Document root (point domain here)
+```
+
+#### 2. Create Database
+
+Create a new MySQL database via cPanel and import the schema:
+
+```bash
+mysql -u username -p database_name < database/schema.sql
+```
+
+Or use phpMyAdmin to import `database/schema.sql`.
+
+#### 3. Configure Application
+
+Copy the example config and edit with your settings:
+
+```bash
+cp app/config/config.example.json app/config/config.json
+```
+
+Edit `config.json`:
+
+```json
+{
+    "database": {
+        "host": "localhost",
+        "name": "your_database",
+        "user": "your_username",
+        "password": "your_password"
+    },
+    "app": {
+        "url": "https://yourdomain.com"
+    }
+}
+```
+
+#### 4. Set Permissions
+
+```bash
+chmod 755 -R app/
+chmod 777 cache/
+chmod 777 logs/
+chmod 644 app/config/config.json
+```
+
+#### 5. Set Up Cron Jobs (Optional)
+
+In cPanel > Cron Jobs, add:
+
+```
+# Refresh bookmark metadata every 6 hours
+0 */6 * * * /usr/local/bin/php /home/username/bookmark-manager/cron/refresh-meta.php
+
+# Cache bookmark images daily at 2 AM
+0 2 * * * /usr/local/bin/php /home/username/bookmark-manager/cron/cache-images.php
+
+# Cleanup expired cache daily at 3 AM
+0 3 * * * /usr/local/bin/php /home/username/bookmark-manager/cron/cleanup.php
+```
+
+#### 6. Create Admin User
+
+Visit `https://yourdomain.com/register` to create your first account.
+
+## Configuration Options
+
+### config.json
+
+```json
+{
+    "database": {
+        "host": "localhost",
+        "name": "bookmarks",
+        "user": "root",
+        "password": "",
+        "charset": "utf8mb4"
+    },
+    "app": {
+        "name": "Bookmark Manager",
+        "url": "http://localhost",
+        "debug": false,
+        "timezone": "UTC",
+        "per_page": 20
+    },
+    "security": {
+        "session_lifetime": 7200,
+        "password_algo": "argon2id"
+    },
+    "cache": {
+        "enabled": true,
+        "ttl": 3600,
+        "driver": "file"
+    },
+    "gdpr": {
+        "enabled": true,
+        "cookie_consent": true,
+        "data_retention_days": 365
+    }
+}
+```
+
+## Folder Structure
+
+```
+bookmark-manager/
+├── app/
+│   ├── api/              # API endpoints (bookmarks, export, import, meta, search)
+│   ├── config/           # Configuration files
+│   ├── controllers/      # Request handlers
+│   ├── core/             # Core framework classes (Autoloader, Database, Router, View)
+│   ├── helpers/          # Utility functions (Auth, CSRF, Sanitizer)
+│   ├── models/           # Database models (Bookmark, Category, Tag, User)
+│   ├── services/         # Business logic services
+│   │   ├── CacheService.php
+│   │   ├── EnhancedMetaFetcher.php
+│   │   ├── ImageCacheService.php
+│   │   ├── ImportExportService.php
+│   │   ├── MetaFetcher.php
+│   │   └── SearchService.php
+│   └── views/
+│       ├── components/   # Reusable UI components
+│       ├── layout.php    # Main layout template
+│       └── pages/        # Page templates
+├── cache/                # File-based cache storage
+│   └── images/           # Cached favicon and images
+├── cron/                 # Scheduled task scripts
+│   ├── cache-images.php
+│   ├── cleanup.php
+│   ├── fetch-meta.php
+│   └── refresh-meta.php
+├── database/             # SQL schema and migrations
+│   ├── schema.sql
+│   └── migrations/
+├── logs/                 # Application logs
+├── public/               # Web-accessible files
+│   ├── css/              # Stylesheets
+│   ├── js/               # JavaScript files
+│   ├── img/              # Images
+│   ├── errors/           # Error pages (404, 500)
+│   └── index.php         # Application entry point
+├── docker-compose.yml    # Docker Compose configuration
+├── Dockerfile            # Docker image definition
+└── README.md             # This file
+```
+
+## API Endpoints
+
+### Search
+```
+GET /api/search?q=query&limit=10
+```
+
+### Bookmark Metadata
+```
+GET /api/meta?url=https://example.com
+```
+
+### Bookmarks CRUD
+```
+GET    /api/bookmarks
+POST   /api/bookmarks
+GET    /api/bookmarks/:id
+PUT    /api/bookmarks/:id
+DELETE /api/bookmarks/:id
+```
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+K` / `Cmd+K` | Focus search |
+| `N` | New bookmark |
+| `?` | Show shortcuts help |
+| `↑` / `↓` | Navigate search results |
+| `Enter` | Select result |
+| `Esc` | Close search/modal |
+
+## Import/Export Formats
+
+### JSON Format
+```json
+{
+    "bookmarks": [
+        {
+            "url": "https://example.com",
+            "title": "Example",
+            "description": "Description here",
+            "category": "Category Name",
+            "tags": ["tag1", "tag2"],
+            "is_favorite": true
+        }
+    ]
+}
+```
+
+### HTML Format
+Standard Netscape Bookmark File format compatible with all major browsers.
+
+### CSV Format
+```csv
+url,title,description,category,tags,is_favorite
+https://example.com,Example,Description,Category,"tag1,tag2",1
+```
+
+## Security Features
+
+- **CSRF Protection**: All forms include CSRF tokens
+- **XSS Prevention**: All output is escaped by default
+- **SQL Injection Prevention**: All queries use prepared statements
+- **Password Hashing**: Argon2id or bcrypt with secure defaults
+- **Session Security**: HTTPOnly cookies, secure flags, regeneration
+- **Rate Limiting Ready**: API endpoints support rate limiting headers
+
+## Performance Optimizations
+
+- **Full-text Search**: MySQL FULLTEXT indexes for fast search
+- **File-based Caching**: JSON cache for search results and metadata
+- **Lazy Loading**: Images and non-critical resources load lazily
+- **Minimal Dependencies**: No external PHP packages required
+- **Client-side Caching**: Search results cached in browser memory
+
+## Troubleshooting
+
+### Docker Issues
+
+**Containers won't start:**
+```bash
+# Check container logs
+docker compose logs -f
+
+# Rebuild containers
+docker compose down && docker compose up -d --build
+```
+
+**Database connection issues in Docker:**
+- Wait for MySQL to fully initialize (check with `docker compose logs mysql`)
+- Ensure the MySQL health check passes before the web container starts
+
+### General Issues
+
+### "500 Internal Server Error"
+- Check PHP error logs (in Docker: `docker compose logs web`)
+- Verify `config.json` syntax is valid
+- Ensure cache and logs directories are writable
+
+### "Database Connection Failed"
+- Verify database credentials in `config.json`
+- Check if MySQL server is running
+- Ensure database user has proper permissions
+
+### "Class Not Found"
+- Check namespace declarations match folder structure
+- Verify autoloader is properly included
+
+### Search Not Working
+- Ensure full-text indexes exist on bookmarks table
+- Check if minimum word length is configured in MySQL
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## Docker Commands Reference
+
+```bash
+# Start containers
+docker compose up -d
+
+# Stop containers
+docker compose down
+
+# View logs
+docker compose logs -f
+
+# Rebuild after changes
+docker compose up -d --build
+
+# Access MySQL CLI
+docker compose exec mysql mysql -u bookmark_user -pbookmark_pass bookmarks_db
+
+# Access PHP container shell
+docker compose exec web bash
+```
+
+## Support
+
+For issues and feature requests, please use the GitHub issue tracker.
