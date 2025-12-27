@@ -154,14 +154,28 @@ class ImportExportService
                     // Check if this is a pinned/favorite link
                     $isFavorite = in_array($url, $pinnedUrls, true) ? 1 : 0;
 
+                    // Get original date from JSON (Linkwarden uses createdAt in ISO format)
+                    $createdAt = null;
+                    if (!empty($link['createdAt'])) {
+                        $createdAt = date('Y-m-d H:i:s', strtotime($link['createdAt']));
+                    } elseif (!empty($link['created_at'])) {
+                        $createdAt = date('Y-m-d H:i:s', strtotime($link['created_at']));
+                    }
+
                     // Create bookmark
-                    $bookmarkId = Bookmark::createBookmark([
+                    $bookmarkData = [
                         'url'         => $url,
                         'title'       => $title,
                         'description' => $link['description'] ?? null,
                         'category_id' => $categoryId,
                         'is_favorite' => $isFavorite
-                    ]);
+                    ];
+                    
+                    if ($createdAt) {
+                        $bookmarkData['created_at'] = $createdAt;
+                    }
+                    
+                    $bookmarkId = Bookmark::createBookmark($bookmarkData);
 
                     // Handle tags
                     $tags = $link['tags'] ?? [];
@@ -272,15 +286,30 @@ class ImportExportService
                     $title = mb_substr($title, 0, 252) . '...';
                 }
 
+                // Get original date if available
+                $createdAt = null;
+                if (!empty($data['created_at'])) {
+                    $createdAt = date('Y-m-d H:i:s', strtotime($data['created_at']));
+                } elseif (!empty($data['add_date'])) {
+                    // HTML bookmarks use add_date (Unix timestamp)
+                    $createdAt = date('Y-m-d H:i:s', (int)$data['add_date']);
+                }
+
                 // Create bookmark
-                $bookmarkId = Bookmark::createBookmark([
+                $bookmarkData = [
                     'url'         => $url,
                     'title'       => $title,
                     'description' => $data['description'] ?? null,
                     'meta_image'  => $data['meta_image'] ?? null,
                     'favicon'     => $data['favicon'] ?? null,
                     'category_id' => $categoryId
-                ]);
+                ];
+                
+                if ($createdAt) {
+                    $bookmarkData['created_at'] = $createdAt;
+                }
+                
+                $bookmarkId = Bookmark::createBookmark($bookmarkData);
 
                 // Handle tags
                 if (!empty($data['tags']) && is_array($data['tags'])) {
@@ -329,11 +358,15 @@ class ImportExportService
 
             // Find parent folder (DT > A, parent DL, previous sibling H3)
             $folder = $this->findParentFolder($link);
+            
+            // Get add_date attribute (Unix timestamp - standard in browser exports)
+            $addDate = $link->getAttribute('add_date') ?: null;
 
             $bookmarks[] = [
                 'url'      => $url,
                 'title'    => trim($link->nodeValue) ?: null,
-                'category' => $folder
+                'category' => $folder,
+                'add_date' => $addDate
             ];
         }
 

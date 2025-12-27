@@ -753,7 +753,7 @@ $appUrl = $protocol . '://' . $host . ($path !== '/' ? $path : '');
         </div>
         
         <p style="text-align: center; margin-top: 1.5rem; font-size: 0.75rem; color: var(--muted);">
-            Bookmark Manager v1.0.0
+            Bookmark Manager v1.1.0
         </p>
     </div>
 </body>

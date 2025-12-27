@@ -42,7 +42,9 @@ class Bookmark extends BaseModel
         // Relationships & flags
         'category_id',
         'is_favorite',
-        'is_archived'
+        'is_archived',
+        // Allow setting created_at during import
+        'created_at'
     ];
 
     /**

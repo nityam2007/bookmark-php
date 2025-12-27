@@ -12,6 +12,7 @@ namespace App\Controllers;
 
 use App\Models\User;
 use App\Models\ApiKey;
+use App\Core\Database;
 use App\Helpers\Auth;
 use App\Helpers\Sanitizer;
 
@@ -25,7 +26,13 @@ class SettingsController extends BaseController
         $this->requireAuth();
 
         $user = User::find(Auth::id());
-        $apiKeys = ApiKey::getByUser(Auth::id());
+        
+        // Try to get API keys, but handle case where table doesn't exist
+        try {
+            $apiKeys = ApiKey::getByUser(Auth::id());
+        } catch (\Exception $e) {
+            $apiKeys = [];
+        }
 
         return $this->view('settings/index', [
             'user'    => $user,
@@ -224,6 +231,63 @@ class SettingsController extends BaseController
             $this->flash('success', 'Password changed successfully');
         } else {
             $this->flash('error', 'Failed to update password. Please try again.');
+        }
+
+        $this->redirect('/settings');
+    }
+
+    /**
+     * Delete all user data (bookmarks, categories, tags) but keep account
+     */
+    public function deleteAllData(): void
+    {
+        $this->requireAuth();
+        $this->validateCsrf();
+
+        $userId = Auth::id();
+        $password = $this->input('password') ?? '';
+
+        // Verify password before deletion
+        if (!User::verifyPassword($userId, $password)) {
+            $this->flash('error', 'Password is incorrect');
+            $this->redirect('/settings');
+        }
+
+        try {
+            Database::beginTransaction();
+
+            // Delete all bookmark_tags first (foreign key constraint)
+            Database::execute("DELETE FROM bookmark_tags");
+            
+            // Delete all bookmarks
+            Database::execute("DELETE FROM bookmarks");
+            
+            // Delete all tags
+            Database::execute("DELETE FROM tags");
+            
+            // Delete all categories except the default one, then reset to just Uncategorized
+            Database::execute("DELETE FROM categories");
+            Database::execute("INSERT INTO categories (name, slug, description, level) VALUES ('Uncategorized', 'uncategorized', 'Default category for bookmarks', 0)");
+            
+            // Clear search cache
+            Database::execute("DELETE FROM search_cache");
+            
+            // Clear image cache directory
+            $cacheDir = __DIR__ . '/../../cache/images';
+            if (is_dir($cacheDir)) {
+                $files = glob($cacheDir . '/*');
+                foreach ($files as $file) {
+                    if (is_file($file) && basename($file) !== '.gitkeep') {
+                        @unlink($file);
+                    }
+                }
+            }
+
+            Database::commit();
+            $this->flash('success', 'All data has been deleted successfully. Your account is still active.');
+        } catch (\Exception $e) {
+            Database::rollback();
+            $this->flash('error', 'Failed to delete data: ' . $e->getMessage());
         }
 
         $this->redirect('/settings');

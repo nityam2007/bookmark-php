@@ -338,25 +338,75 @@ unset($_SESSION['new_api_key'], $_SESSION['new_api_key_name']);
                 </h2>
             </div>
             <div class="danger-content">
-                <p>Once you delete your account, there is no going back. All your bookmarks and data will be permanently deleted.</p>
-                <button type="button" class="btn btn-danger" onclick="showDeleteModal()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                    Delete Account
-                </button>
+                <div class="danger-item">
+                    <div class="danger-info">
+                        <h4>Delete All Data</h4>
+                        <p>Delete all bookmarks, categories, and tags. Your account will remain active.</p>
+                    </div>
+                    <button type="button" class="btn btn-warning" data-modal-open="deleteDataModal">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Delete All Data
+                    </button>
+                </div>
+                <div class="danger-item">
+                    <div class="danger-info">
+                        <h4>Delete Account</h4>
+                        <p>Permanently delete your account and all associated data. This cannot be undone.</p>
+                    </div>
+                    <button type="button" class="btn btn-danger" data-modal-open="deleteModal">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Delete Account
+                    </button>
+                </div>
             </div>
         </section>
     </div>
 </div>
 
+<!-- Delete All Data Modal -->
+<div class="modal-overlay" id="deleteDataModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Delete All Data</h3>
+            <button type="button" class="modal-close" data-modal-close>&times;</button>
+        </div>
+        <form action="/settings/delete-all-data" method="POST">
+            <?= Csrf::field() ?>
+            <div class="modal-body">
+                <p class="text-warning"><strong>Warning:</strong> This will delete all your bookmarks, categories, and tags!</p>
+                <p>Your account will remain active, but all saved data will be permanently removed.</p>
+                <p>Please enter your password to confirm:</p>
+                <div class="form-group">
+                    <input 
+                        type="password" 
+                        name="password" 
+                        class="form-input"
+                        placeholder="Your password"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-warning">Delete All Data</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Delete Account Modal -->
-<div class="modal-overlay" id="deleteModal" style="display: none;">
+<div class="modal-overlay" id="deleteModal">
     <div class="modal">
         <div class="modal-header">
             <h3>Delete Account</h3>
-            <button type="button" class="modal-close" onclick="hideDeleteModal()">&times;</button>
+            <button type="button" class="modal-close" data-modal-close>&times;</button>
         </div>
         <form action="/settings/delete-account" method="POST">
             <?= Csrf::field() ?>
@@ -370,11 +420,12 @@ unset($_SESSION['new_api_key'], $_SESSION['new_api_key_name']);
                         class="form-input"
                         placeholder="Your password"
                         required
+                        autocomplete="current-password"
                     >
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="hideDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
                 <button type="submit" class="btn btn-danger">Delete My Account</button>
             </div>
         </form>
@@ -534,6 +585,48 @@ unset($_SESSION['new_api_key'], $_SESSION['new_api_key_name']);
     color: var(--text-muted);
 }
 
+.danger-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.danger-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.danger-item:first-child {
+    padding-top: 0;
+}
+
+.danger-info h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+.danger-info p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+.text-warning {
+    color: #f59e0b;
+}
+
 .btn {
     display: inline-flex;
     align-items: center;
@@ -580,10 +673,14 @@ unset($_SESSION['new_api_key'], $_SESSION['new_api_key_name']);
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     z-index: 1000;
+}
+
+.modal-overlay.active {
+    display: flex;
 }
 
 .modal {
@@ -838,14 +935,6 @@ unset($_SESSION['new_api_key'], $_SESSION['new_api_key_name']);
 </style>
 
 <script>
-function showDeleteModal() {
-    document.getElementById('deleteModal').style.display = 'flex';
-}
-
-function hideDeleteModal() {
-    document.getElementById('deleteModal').style.display = 'none';
-}
-
 function copyApiKey() {
     const keyElement = document.getElementById('newApiKey');
     const key = keyElement.textContent;

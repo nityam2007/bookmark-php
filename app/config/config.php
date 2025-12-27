@@ -38,7 +38,7 @@ define('APP_NAME', $jsonConfig['app']['name'] ?? 'Bookmark Manager');
 define('APP_URL', $jsonConfig['app']['url'] ?? 'http://localhost');
 define('APP_DEBUG', $jsonConfig['app']['debug'] ?? false);
 define('APP_TIMEZONE', $jsonConfig['app']['timezone'] ?? 'UTC');
-define('APP_VERSION', '1.0.0');
+define('APP_VERSION', '1.1.0');
 
 // ============================================
 // SECURITY SETTINGS
