@@ -16,6 +16,7 @@ A production-ready, fast, and modular bookmark management system built with PHP 
 - 🐳 **Docker Ready** - Easy deployment with Docker Compose
 - 🖼️ **Image Caching** - Automatic favicon and image caching
 - 🔄 **Meta Fetching** - Automatic title and description extraction from URLs
+- 🧩 **Browser Extension** - Chrome/Edge extension for quick bookmark saving
 
 ## Requirements
 
@@ -303,6 +304,35 @@ GET /api/external.php?id=123
 ```bash
 DELETE /api/external.php?id=123
 ```
+
+## Browser Extension
+
+A Chrome/Edge/Brave extension is included for quickly saving bookmarks from any webpage.
+
+### Installation
+
+1. Open `chrome://extensions/` (or `edge://extensions/` for Edge)
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select the `browser-extension` folder
+5. The extension icon will appear in your toolbar
+
+### Setup
+
+1. Click the extension icon → **Settings**
+2. Enter your **Server URL** (e.g., `http://127.0.0.1:8080`)
+3. Enter your **API Key** (from Settings → API Keys in your dashboard)
+4. Click **Test Connection** then **Save**
+
+### Usage
+
+1. Navigate to any webpage
+2. Click the extension icon
+3. Select a category (default: Uncategorized)
+4. Add tags (optional)
+5. Click **Save Bookmark**
+
+See [browser-extension/README.md](browser-extension/README.md) for detailed documentation.
 
 ## Keyboard Shortcuts
 

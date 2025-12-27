@@ -6,7 +6,8 @@
  * Endpoints:
  *   POST /api/external.php - Add a bookmark
  *   GET  /api/external.php - List bookmarks / Get single bookmark
- *   DELETE /api/external.php?id=X - Delete a bookmark
+ * 
+ * Note: DELETE is disabled via API for safety. Use the web interface to delete bookmarks.
  * 
  * Authentication:
  *   - Header: Authorization: Bearer <api_key>
@@ -36,7 +37,7 @@ use App\Core\View;
 // Set JSON headers
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Authorization, X-API-Key, Content-Type');
 
 // Handle preflight
@@ -51,12 +52,11 @@ ApiAuth::require();
 $method = $_SERVER['REQUEST_METHOD'];
 $id = Sanitizer::int($_GET['id'] ?? null);
 
-// Route request
+// Route request (DELETE disabled for safety - use web interface)
 match($method) {
     'GET'    => handleGet($id),
     'POST'   => handlePost(),
-    'DELETE' => handleDelete($id),
-    default  => View::json(['success' => false, 'error' => 'Method not allowed'], 405)
+    default  => View::json(['success' => false, 'error' => 'Method not allowed. API supports GET and POST only.'], 405)
 };
 
 /**
@@ -135,8 +135,7 @@ function handlePost(): never
     }
     
     // Check for duplicate
-    $urlHash = hash('sha256', $url);
-    $existing = Bookmark::findByUrlHash($urlHash);
+    $existing = Bookmark::findByUrl($url);
     
     if ($existing) {
         View::json([
@@ -177,7 +176,8 @@ function handlePost(): never
     
     if ($fetchMeta && (empty($title) || empty($description))) {
         try {
-            $meta = MetaFetcher::fetch($url);
+            $fetcher = new MetaFetcher();
+            $meta = $fetcher->fetch($url);
             if (empty($title)) {
                 $title = $meta['title'] ?? parse_url($url, PHP_URL_HOST);
             }
@@ -194,10 +194,9 @@ function handlePost(): never
         }
     }
     
-    // Create bookmark
-    $bookmarkId = Bookmark::create([
+    // Create bookmark (createBookmark auto-generates url_hash)
+    $bookmarkId = Bookmark::createBookmark([
         'url'              => $url,
-        'url_hash'         => $urlHash,
         'title'            => $title ?: parse_url($url, PHP_URL_HOST),
         'description'      => $description,
         'meta_image'       => $metaImage,
@@ -229,27 +228,4 @@ function handlePost(): never
         'message' => 'Bookmark created successfully',
         'data'    => $bookmark
     ], 201);
-}
-
-/**
- * DELETE - Delete a bookmark
- */
-function handleDelete(?int $id): never
-{
-    if (!$id) {
-        View::json(['success' => false, 'error' => 'Bookmark ID is required'], 400);
-    }
-    
-    $bookmark = Bookmark::find($id);
-    
-    if (!$bookmark) {
-        View::json(['success' => false, 'error' => 'Bookmark not found'], 404);
-    }
-    
-    Bookmark::delete($id);
-    
-    View::json([
-        'success' => true,
-        'message' => 'Bookmark deleted successfully'
-    ]);
 }

@@ -79,8 +79,20 @@ class ApiAuth
     private static function extractApiKey(): ?string
     {
         // Method 1: Authorization: Bearer <api_key>
-        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-        if (preg_match('/^Bearer\s+(.+)$/i', $authHeader, $matches)) {
+        // Check multiple possible header names (Apache can be tricky)
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] 
+            ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] 
+            ?? '';
+        
+        // Also try to get from apache_request_headers if available
+        if (empty($authHeader) && function_exists('apache_request_headers')) {
+            $headers = apache_request_headers();
+            if ($headers) {
+                $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+            }
+        }
+        
+        if (!empty($authHeader) && preg_match('/^Bearer\s+(.+)$/i', $authHeader, $matches)) {
             return trim($matches[1]);
         }
         

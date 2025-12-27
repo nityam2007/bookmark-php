@@ -14,7 +14,7 @@ External API for integrating with Chrome extensions, mobile apps, and other thir
     - [Add Bookmark](#add-bookmark)
     - [List Bookmarks](#list-bookmarks)
     - [Get Single Bookmark](#get-single-bookmark)
-    - [Delete Bookmark](#delete-bookmark)
+- [Safety Note](#safety-note)
 - [Error Handling](#error-handling)
 - [Code Examples](#code-examples)
   - [cURL](#curl)
@@ -423,30 +423,15 @@ curl -X GET "https://your-domain.com/api/external.php?id=42" \
 
 ---
 
-### Delete Bookmark
+---
 
-Permanently delete a bookmark.
+## Safety Note
 
-```http
-DELETE /api/external.php?id={bookmark_id}
-Authorization: Bearer YOUR_API_KEY
-```
-
-#### Example Request
-
-```bash
-curl -X DELETE "https://your-domain.com/api/external.php?id=42" \
-  -H "Authorization: Bearer bm_your_api_key"
-```
-
-#### Success Response
-
-```json
-{
-  "success": true,
-  "message": "Bookmark deleted successfully"
-}
-```
+> 🔒 **DELETE Not Available via API**
+>
+> For safety reasons, the API is **read and add only**. You cannot delete bookmarks through the API.
+>
+> To delete bookmarks, please use the web interface where you have full control over your data.
 
 ---
 
@@ -698,7 +683,7 @@ Access-Control-Allow-Headers: Authorization, X-API-Key, Content-Type
 
 ### v1.0.0 (2025-12-27)
 - Initial API release
-- Add, list, get, and delete bookmarks
+- Add, list, and get bookmarks (read & add only - no delete for safety)
 - API key authentication
 - Auto-fetch metadata from URLs
 - Category and tag support

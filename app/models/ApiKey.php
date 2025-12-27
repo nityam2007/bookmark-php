@@ -73,7 +73,7 @@ class ApiKey extends BaseModel
                   AND (ak.expires_at IS NULL OR ak.expires_at > NOW())
                 LIMIT 1";
         
-        $result = Database::fetch($sql, [$keyHash]);
+        $result = Database::fetchOne($sql, [$keyHash]);
         
         if (!$result) {
             return null;

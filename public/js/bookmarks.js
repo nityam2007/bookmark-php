@@ -28,7 +28,7 @@ const BookmarkActions = {
      */
     bindEvents() {
         // Delete bookmark
-        document.querySelectorAll('[data-action="delete-bookmark"]').forEach(btn => {
+        document.querySelectorAll('[data-action="delete"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 const id = btn.dataset.id;
@@ -203,9 +203,8 @@ const BookmarkActions = {
         try {
             const formData = new FormData();
             formData.append('csrf_token', this.csrfToken);
-            formData.append('_method', 'DELETE');
             
-            const response = await fetch(`/api/bookmarks/${id}`, {
+            const response = await fetch(`/bookmarks/${id}/delete`, {
                 method: 'POST',
                 body: formData
             });

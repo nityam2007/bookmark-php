@@ -351,7 +351,6 @@ $baseUrl = APP_URL;
                 <li><a href="#add-bookmark">➕ Add Bookmark</a></li>
                 <li><a href="#list-bookmarks">📋 List Bookmarks</a></li>
                 <li><a href="#get-bookmark">🔍 Get Single Bookmark</a></li>
-                <li><a href="#delete-bookmark">🗑️ Delete Bookmark</a></li>
                 <li><a href="#errors">⚠️ Error Handling</a></li>
                 <li><a href="#examples">💡 Code Examples</a></li>
             </ul>
@@ -768,29 +767,17 @@ $baseUrl = APP_URL;
             </div>
         </section>
 
-        <section id="delete-bookmark">
-            <h2>🗑️ Delete Bookmark</h2>
-            
-            <div class="endpoint">
-                <div class="endpoint-header">
-                    <span class="method method-delete">DELETE</span>
-                    <span class="endpoint-path">/api/external.php?id={id}</span>
-                </div>
-                <div class="endpoint-body">
-                    <p class="endpoint-desc">Permanently delete a bookmark.</p>
-                    
-                    <h4>Example Request</h4>
-                    <pre><code>curl -X DELETE "<?= htmlspecialchars($baseUrl) ?>/api/external.php?id=42" \
-  -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
-
-                    <div class="response-example">
-                        <h5>Success Response</h5>
-                        <pre><code>{
-  "success": true,
-  "message": "Bookmark deleted successfully"
-}</code></pre>
-                    </div>
-                </div>
+        <section id="safety-note">
+            <h2>🔒 Safety Note</h2>
+            <div class="auth-box">
+                <h4 style="margin-top: 0;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    DELETE Not Available via API
+                </h4>
+                <p>For safety reasons, the API is <strong>read and add only</strong>. You cannot delete bookmarks through the API.</p>
+                <p style="margin-bottom: 0;">To delete bookmarks, please use the <a href="/bookmarks">web interface</a> where you have full control over your data.</p>
             </div>
         </section>
 
