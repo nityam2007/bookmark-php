@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS `bookmarks` (
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `idx_url_hash` (`url_hash`),
+    KEY `idx_url_hash` (`url_hash`),
     KEY `idx_category` (`category_id`),
     KEY `idx_favorite` (`is_favorite`),
     KEY `idx_archived` (`is_archived`),
