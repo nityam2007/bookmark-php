@@ -91,7 +91,7 @@ HELP;
 }
 
 $config = [
-    'batch_size'   => (int)($options['batch'] ?? 50),
+    'batch_size'   => (int)($options['batch'] ?? 250),
     'age_days'     => (int)($options['age'] ?? 7),
     'max_timeout'  => (int)($options['timeout'] ?? 300),
     'verbose'      => isset($options['verbose']),
